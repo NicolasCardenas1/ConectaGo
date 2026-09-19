@@ -19,8 +19,13 @@ lims/
 
 Instalar antes de clonar el proyecto:
 
-- **JDK** — revisa la propiedad `<java.version>` (o `<maven.compiler.release>`) en el `pom.xml` de `lims-backend` y `lims-client` para confirmar la versión exacta e instalar esa misma.
-- **Docker Desktop** (para levantar MySQL en un contenedor).
+- **JDK 21** (no JRE, no Java 8) — el proyecto compila con `release 21`. Se recomienda **Eclipse Temurin 21** (https://adoptium.net/). Verifica con:
+  ```
+  java -version
+  javac -version
+  ```
+  Si `javac` no existe o la versión no es 21, instala Temurin 21 y configura `JAVA_HOME` y el `Path` del sistema apuntando a esa instalación (en Windows, hazlo desde "Variables de entorno del sistema", no con `setx` en PowerShell, porque `setx` puede truncar o sobrescribir el `Path` existente).
+- **Docker Desktop** (para levantar MySQL en un contenedor). Debe quedar con el motor ("Engine") corriendo antes de usar `docker-compose`.
 - **Git**.
 - **IntelliJ IDEA** (Community o Ultimate) — recomendado, es lo que usa el equipo.
 - No es necesario instalar Maven aparte: ambos proyectos incluyen Maven Wrapper (`mvnw` / `mvnw.cmd`).
@@ -28,11 +33,14 @@ Instalar antes de clonar el proyecto:
 ## 1. Clonar el repositorio
 
 ```
-git clone <URL-del-repositorio>
-cd lims
+git clone https://github.com/NicolasCardenas1/ConectaGo.git
+cd ConectaGo
 ```
 
-> ⚠️ Cristian: pega aquí la URL real del repo de GitHub del equipo antes de compartir este archivo.
+> El proyecto LIMS vive dentro de este repo, en la carpeta `Evidencia Proyecto/lims/` (no en la raíz). Los comandos de las secciones siguientes (`cd lims-backend`, `cd lims-client`, etc.) se ejecutan siempre desde ahí, por ejemplo:
+> ```
+> cd "Evidencia Proyecto/lims"
+> ```
 
 ## 2. Levantar la base de datos (Docker)
 
@@ -58,7 +66,7 @@ volumes:
   lims-data:
 ```
 
-Para levantarla, cada integrante solo necesita:
+Para levantarla, cada integrante solo necesita (con Docker Desktop abierto y el motor corriendo):
 
 ```
 cd lims-backend
@@ -66,6 +74,12 @@ docker-compose up -d
 ```
 
 Esto crea el contenedor `lims-mysql`, expuesto en el puerto **3307** del host (para no chocar con un MySQL local que ya tengas en el 3306 por defecto), con usuario `lims_user` / contraseña `lims_pass` sobre el esquema `lims_db`.
+
+Verifica que quedó arriba con:
+
+```
+docker ps
+```
 
 > ⚠️ La contraseña de root (`rootpassword`) queda en texto plano en este archivo versionado en git. Es aceptable para un entorno de desarrollo local del equipo, pero no la reutilicen en nada expuesto a internet.
 
@@ -76,12 +90,26 @@ Notas importantes para tus compañeros:
   docker-compose up -d
   ```
   (`-v` borra también el volumen `lims-data`, no solo el contenedor).
-- Después del primer arranque, hay que insertar manualmente un usuario de prueba (todavía no existe login real), porque `Muestra` requiere un `usuario_registro` válido por llave foránea:
-  ```sql
-  INSERT INTO usuarios (id_usuario, nombre, apellido, username, password_hash)
-  VALUES (1, 'Tu Nombre', 'Tu Apellido', 'tu_usuario', 'pendiente-hasta-login');
+- Después del primer arranque, hay que insertar manualmente un usuario de prueba (todavía no existe login real), porque `Muestra` requiere un `usuario_registro` válido por llave foránea. **Las tablas `centros` y `roles` ya vienen precargadas por `01-schema.sql`**, así que solo hace falta el `INSERT` en `usuarios`.
+
+  Primero entra al cliente MySQL dentro del contenedor (no pegues SQL directo en PowerShell, PowerShell no entiende sintaxis SQL):
   ```
-  > ⚠️ Confirma los nombres de columna reales de tu tabla `usuarios` (puede que falten o sobren columnas respecto a este ejemplo) y ajusta el INSERT.
+  docker exec -it lims-mysql mysql -u lims_user -plims_pass lims_db
+  ```
+  Y dentro del prompt `mysql>` ejecuta:
+  ```sql
+  INSERT INTO usuarios (id_centro, nombre, apellido, email, username, password_hash, id_rol)
+  VALUES (1, 'Tu Nombre', 'Tu Apellido', 'tu_correo@lims.cl', 'tu_usuario', 'pendiente-hasta-login', 3);
+  ```
+  Donde:
+  - `id_centro = 1` → "Laboratorio Central" (precargado en la tabla `centros`).
+  - `id_rol`: `1 = Administrador`, `2 = Supervisor`, `3 = Analista` (precargados en la tabla `roles`).
+
+  Si tienes dudas sobre los valores disponibles, revísalos con:
+  ```sql
+  SELECT * FROM centros;
+  SELECT * FROM roles;
+  ```
 - **Antes de que Claudio y Nicolás clonen el repo**, confirma que `lims-backend/db-init/01-schema.sql` ya tenga los campos `tipo_muestra` y los 3 valores de `prioridad` que agregamos a mano por `ALTER TABLE` — si ese archivo quedó desactualizado, sus bases de datos se crearán con el esquema viejo.
 
 ## 3. Configurar la conexión del backend
@@ -120,10 +148,22 @@ cd lims-client
 .\mvnw.cmd javafx:run
 ```
 
-Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que devuelve el backend.
+Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que devuelve el backend, y desde ahí se puede usar "Agregar Muestra" para crear un registro real de extremo a extremo.
 
 ## Problemas comunes
 
+- **`No compiler is provided in this environment. Perhaps you are running on a JRE rather than a JDK?`**: tienes instalado un JRE (o Java 8) en vez de un JDK 21. Instala Eclipse Temurin JDK 21 y verifica con `javac -version`.
+- **`"mvnw" / "powershell" no se reconoce como un comando interno o externo` después de tocar `JAVA_HOME`/`Path`**: normalmente indica que el `Path` del sistema quedó corrupto (por ejemplo, sobrescrito por un `setx` mal usado, perdiendo entradas como `C:\Windows\System32`). Revísalo con:
+  ```powershell
+  [Environment]::GetEnvironmentVariable('Path','Machine')
+  ```
+  y reconstrúyelo agregando de vuelta las rutas base de Windows (`C:\Windows\system32`, `C:\Windows`, `C:\Windows\System32\Wbem`, `C:\Windows\System32\WindowsPowerShell\v1.0\`, `C:\Windows\System32\OpenSSH\`) más la ruta `bin` del JDK 21 instalado, usando:
+  ```powershell
+  [Environment]::SetEnvironmentVariable('Path', '<lista completa y correcta>', 'Machine')
+  ```
+  Cierra y vuelve a abrir la terminal después de este cambio.
+- **`failed to connect to the docker API` / `No such container: lims-mysql`**: Docker Desktop no está abierto (ábrelo y espera a que el motor quede "running"), o no te ubicaste dentro de `lims-backend` antes de correr `docker-compose up -d`.
+- **`ERROR 1364: Field 'id_centro' doesn't have a default value` (u otro campo obligatorio) al insertar en `usuarios`**: la tabla real tiene columnas por llave foránea (`id_centro`, `id_rol`) que no estaban en un ejemplo anterior de este README. Usa el `INSERT` completo de la sección 2 más arriba. Si necesitas confirmar las columnas reales, ejecuta `DESCRIBE usuarios;` dentro del cliente MySQL del contenedor.
 - **`ClassNotFoundException` al hacer `javafx:run`**: revisar que en `lims-client/pom.xml`, dentro del plugin `javafx-maven-plugin`, el `<mainClass>` esté como clase simple (`com.duoc.lims.limsclient.HelloApplication`), **sin** prefijo de módulo (`module/Class`). El proyecto no usa `module-info.java`.
 - **`401 Unauthorized` o `403 Forbidden` en los endpoints**: el backend ya trae un `SecurityConfig` temporal que permite todo bajo `/api/**` y `/error`. Si aparece de nuevo, revisar que esa clase esté presente y no haya sido sobrescrita.
 - **Error `Column 'fecha_recepcion' cannot be null` al crear una muestra**: la entidad `Muestra` debe tener el campo `fechaRecepcion` anotado con `@CreationTimestamp` (Hibernate), no depender solo del `DEFAULT CURRENT_TIMESTAMP` de MySQL.
