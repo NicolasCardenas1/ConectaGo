@@ -80,7 +80,8 @@ public class MuestraService {
                 m.getPrioridad().getValorDb(),
                 m.getEstado().getValorDb(),
                 m.getFechaRecepcion(),
-                m.getUsuarioRegistro().getNombre() + " " + m.getUsuarioRegistro().getApellido()
+                m.getUsuarioRegistro().getNombre() + " " + m.getUsuarioRegistro().getApellido(),
+                m.getObservaciones()
         );
     }
 }

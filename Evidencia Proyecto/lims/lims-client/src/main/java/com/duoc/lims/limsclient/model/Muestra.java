@@ -14,6 +14,7 @@ public class Muestra {
     private String estado;
     private LocalDateTime fechaRecepcion;
     private String usuarioRegistro;
+    private String observaciones;
 
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
@@ -38,4 +39,7 @@ public class Muestra {
 
     public String getUsuarioRegistro() { return usuarioRegistro; }
     public void setUsuarioRegistro(String usuarioRegistro) { this.usuarioRegistro = usuarioRegistro; }
+
+    public String getObservaciones() { return observaciones; }
+    public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
 }

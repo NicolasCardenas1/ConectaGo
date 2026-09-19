@@ -18,4 +18,5 @@ public class MuestraResponseDTO {
     private String estado;
     private LocalDateTime fechaRecepcion;
     private String usuarioRegistro;
+    private String observaciones;
 }
