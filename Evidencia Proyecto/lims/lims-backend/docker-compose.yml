@@ -1,0 +1,17 @@
+services:
+  db:
+    image: mysql:8.4
+    container_name: lims-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: rootpassword
+      MYSQL_DATABASE: lims_db
+      MYSQL_USER: lims_user
+      MYSQL_PASSWORD: lims_pass
+    ports:
+      - "3307:3306"
+    volumes:
+      - lims-data:/var/lib/mysql
+      - ./db-init:/docker-entrypoint-initdb.d
+volumes:
+  lims-data:
