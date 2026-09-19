@@ -123,6 +123,8 @@ CREATE TABLE muestras (
     id_muestra              INT AUTO_INCREMENT PRIMARY KEY,
     id_centro               INT NOT NULL,                  -- a qué laboratorio pertenece la muestra
     codigo_unico            VARCHAR(30) NOT NULL,          -- ej. LAB-2026-000123 (único DENTRO del centro)
+    tipo_muestra            ENUM('Agua potable','Agua residual','Sangre','Suelo','Alimento','Otro')
+                             NOT NULL DEFAULT 'Otro',
     procedencia             VARCHAR(150),                  -- quién/qué origina la muestra
     id_usuario_registro     INT NOT NULL,                  -- quién la ingresó al sistema
     fecha_toma              DATETIME NULL,                 -- cuándo se tomó la muestra
@@ -139,7 +141,7 @@ CREATE TABLE muestras (
     condicion_recepcion     VARCHAR(150),   -- estado físico/temperatura al recibir (cadena de custodia)
     ubicacion_almacenamiento VARCHAR(100),  -- dónde queda guardada físicamente
     fecha_vencimiento       DATE NULL,      -- vida útil de la muestra (crítico en clínico/acuícola)
-    prioridad               ENUM('Normal','Urgente') NOT NULL DEFAULT 'Normal',
+    prioridad               ENUM('Baja','Media','Alta') NOT NULL DEFAULT 'Media',
     observaciones           TEXT,
     CONSTRAINT fk_muestra_usuario FOREIGN KEY (id_usuario_registro) REFERENCES usuarios(id_usuario),
     CONSTRAINT fk_muestra_centro  FOREIGN KEY (id_centro) REFERENCES centros(id_centro),

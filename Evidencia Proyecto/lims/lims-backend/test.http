@@ -1,0 +1,14 @@
+### Listar muestras
+GET http://localhost:8080/api/muestras
+
+### Crear muestra
+POST http://localhost:8080/api/muestras
+Content-Type: application/json
+
+{
+  "tipoMuestra": "Agua potable",
+  "procedencia": "Clínica Puerto Montt",
+  "prioridad": "Media",
+  "observaciones": "Muestra de prueba",
+  "idUsuarioRegistro": 1
+}
