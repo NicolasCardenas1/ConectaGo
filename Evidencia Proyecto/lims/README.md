@@ -172,3 +172,33 @@ Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que
 ## Estado del proyecto (seguridad)
 
 `SecurityConfig.java` actualmente permite todas las peticiones (`permitAll()`) de forma temporal, sin login ni roles. Esto está pendiente como tarea de Fase 2 del cronograma (autenticación real + roles Analista/Supervisor) y **no debe considerarse la configuración final**.
+
+## 6. (Opcional) Usar la base de datos compartida en la nube (Aiven)
+
+Además de la base local en Docker, el equipo tiene una base MySQL en la nube
+(Aiven) para compartir los mismos datos entre todos. El backend puede apuntar
+a la base local o a la de la nube **sin tocar código**, usando un perfil de
+Spring. El detalle completo está en `README-aiven.md`.
+
+Resumen:
+
+1. Pide a Nicolás **por mensaje privado** los datos de conexión (nunca por el
+   grupo ni por git).
+2. Crea `lims-backend/src/main/resources/application-aiven.properties` (ya está
+   en el `.gitignore`, no se sube):
+```properties
+   spring.datasource.url=jdbc:mysql://HOST:PORT/lims_db?sslMode=REQUIRED
+   spring.datasource.username=USUARIO
+   spring.datasource.password=CLAVE
+```
+3. En IntelliJ, crea una configuración Spring Boot para
+   `LimsBackendApplication` con la variable de entorno
+   `SPRING_PROFILES_ACTIVE=aiven`.
+4. Ejecuta esa configuración. En el log verás
+   `The following profiles are active: aiven`.
+
+> - La base de Aiven ya tiene esquema y datos: **no correr** `01-schema.sql`
+>   contra ella.
+> - Solo un backend a la vez (local o Aiven): comparten el puerto 8080.
+> - El plan gratuito de Aiven se suspende tras inactividad; la primera
+>   conexión puede tardar en "despertar".
