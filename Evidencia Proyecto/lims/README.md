@@ -147,6 +147,41 @@ cd lims-client
 .\mvnw.cmd clean compile
 .\mvnw.cmd javafx:run
 ```
+## 6. Módulos y endpoints del backend (API REST)
+
+El backend expone los siguientes módulos, todos bajo `http://localhost:8080`.
+Mientras no exista login (RF06), los campos de usuario (`idUsuarioRegistro`,
+`idUsuarioIngreso`, `idSupervisor`) se envían en el cuerpo de la petición.
+
+### Muestras (RF01)
+- `GET  /api/muestras` — lista todas las muestras.
+- `POST /api/muestras` — registra una muestra (genera código único automático).
+
+### Catálogo de análisis
+- `GET   /api/analisis` — lista los análisis del catálogo.
+- `GET   /api/analisis/{id}` — obtiene un análisis por id.
+- `POST  /api/analisis` — crea un análisis (valida que min <= max).
+- `PUT   /api/analisis/{id}` — edita un análisis.
+- `PATCH /api/analisis/{id}/estado?activo=false` — activa/desactiva (baja lógica).
+
+### Análisis solicitados por muestra (RF02)
+- `POST /api/muestra-analisis` — asigna un análisis a una muestra
+  (evita duplicados y análisis inactivos).
+- `GET  /api/muestra-analisis?idMuestra={id}` — lista los análisis de una muestra.
+
+### Resultados (RF02 / RF03)
+- `POST /api/resultados` — ingresa el resultado de un análisis solicitado.
+  El backend calcula automáticamente si el valor está dentro del rango del
+  análisis (`dentroRango`). Si queda fuera de rango, exige justificación en
+  `observaciones` (ISO 17025). Al ingresarse, el análisis pasa a "Completado".
+
+### Aprobación de resultados (RF04)
+- `POST /api/aprobaciones` — un supervisor aprueba o rechaza un resultado
+  (`estadoAprobacion`: "Aprobado" / "Rechazado"). Un rechazo exige `comentario`.
+  Se conserva el historial de evaluaciones. Al evaluar, el estado de la muestra
+  avanza automáticamente: "Rechazada" ante un rechazo, "Aprobada" cuando todos
+  sus análisis quedan aprobados, o "Resultados ingresados" si aún faltan.
+
 
 Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que devuelve el backend, y desde ahí se puede usar "Agregar Muestra" para crear un registro real de extremo a extremo.
 
@@ -168,6 +203,15 @@ Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que
 - **`401 Unauthorized` o `403 Forbidden` en los endpoints**: el backend ya trae un `SecurityConfig` temporal que permite todo bajo `/api/**` y `/error`. Si aparece de nuevo, revisar que esa clase esté presente y no haya sido sobrescrita.
 - **Error `Column 'fecha_recepcion' cannot be null` al crear una muestra**: la entidad `Muestra` debe tener el campo `fechaRecepcion` anotado con `@CreationTimestamp` (Hibernate), no depender solo del `DEFAULT CURRENT_TIMESTAMP` de MySQL.
 - **Errores de compilación por paquete no encontrado**: confirmar que el paquete base sea `com.duoc.lims.limsbackend` (backend) y `com.duoc.lims.limsclient` (cliente) en todas las clases — un error de tipeo aquí genera decenas de errores en cadena.
+
+## Estado de los requisitos funcionales
+
+- **RF01** (registro de muestras) — implementado.
+- **RF02** (ingreso de resultados) — implementado.
+- **RF03** (validación de rangos) — implementado.
+- **RF04** (aprobación por supervisor) — implementado.
+- **RF05** (reporte PDF) — pendiente.
+- **RF06** (autenticación con roles) — pendiente.
 
 ## Estado del proyecto (seguridad)
 
