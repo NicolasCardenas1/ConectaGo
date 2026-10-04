@@ -14,6 +14,9 @@ import org.springframework.stereotype.Service;
 
 import org.springframework.transaction.annotation.Transactional;
 import com.duoc.lims.limsbackend.dto.AnalisisDeMuestraDTO;
+import com.duoc.lims.limsbackend.dto.HistorialEstadoDTO;
+import com.duoc.lims.limsbackend.model.MuestraHistorialEstado;
+import com.duoc.lims.limsbackend.repository.MuestraHistorialEstadoRepository;
 import com.duoc.lims.limsbackend.dto.MuestraDetalleDTO;
 import com.duoc.lims.limsbackend.dto.ResultadoResponseDTO;
 import com.duoc.lims.limsbackend.model.AnalisisCatalogo;
@@ -43,6 +46,8 @@ public class MuestraService {
     private final ResultadoRepository resultadoRepository;
     private final AprobacionRepository aprobacionRepository;
     private final ResultadoService resultadoService;
+    private final EstadoMuestraService estadoMuestraService;
+    private final MuestraHistorialEstadoRepository historialRepository;
 
     public MuestraService(MuestraRepository muestraRepository,
                           CentroRepository centroRepository,
@@ -50,7 +55,9 @@ public class MuestraService {
                           MuestraAnalisisRepository muestraAnalisisRepository,
                           ResultadoRepository resultadoRepository,
                           AprobacionRepository aprobacionRepository,
-                          ResultadoService resultadoService) {
+                          ResultadoService resultadoService,
+                          EstadoMuestraService estadoMuestraService,
+                          MuestraHistorialEstadoRepository historialRepository) {
         this.muestraRepository = muestraRepository;
         this.centroRepository = centroRepository;
         this.usuarioRepository = usuarioRepository;
@@ -58,6 +65,8 @@ public class MuestraService {
         this.resultadoRepository = resultadoRepository;
         this.aprobacionRepository = aprobacionRepository;
         this.resultadoService = resultadoService;
+        this.estadoMuestraService = estadoMuestraService;
+        this.historialRepository = historialRepository;
     }
 
     @Transactional
@@ -79,6 +88,7 @@ public class MuestraService {
         muestra.setObservaciones(dto.getObservaciones());
 
         Muestra guardada = muestraRepository.save(muestra);
+        estadoMuestraService.registrarRecepcion(guardada, usuario);   // primer registro del historial
         return aDTO(guardada);
     }
 
@@ -99,7 +109,12 @@ public class MuestraService {
                 .map(this::analisisADTO)
                 .toList();
 
-        return new MuestraDetalleDTO(aDTO(muestra), analisis);
+        List<HistorialEstadoDTO> historial = historialRepository.findByMuestra_IdOrderByIdAsc(id)
+                .stream()
+                .map(this::historialADTO)
+                .toList();
+
+        return new MuestraDetalleDTO(aDTO(muestra), analisis, historial);
     }
 
     private AnalisisDeMuestraDTO analisisADTO(MuestraAnalisis ma) {
@@ -147,5 +162,14 @@ public class MuestraService {
                 m.getUsuarioRegistro().getNombre() + " " + m.getUsuarioRegistro().getApellido(),
                 m.getObservaciones()
         );
+    }
+
+    private HistorialEstadoDTO historialADTO(MuestraHistorialEstado h) {
+        return new HistorialEstadoDTO(
+                h.getEstadoAnterior() == null ? null : h.getEstadoAnterior().getValorDb(),
+                h.getEstadoNuevo().getValorDb(),
+                h.getUsuario().getNombre() + " " + h.getUsuario().getApellido(),
+                h.getFechaCambio(),
+                h.getComentario());
     }
 }

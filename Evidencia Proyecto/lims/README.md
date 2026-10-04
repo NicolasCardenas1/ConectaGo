@@ -143,6 +143,19 @@ cd lims-backend
 
 Verificación rápida: abre el archivo `.http` de pruebas (o un navegador) en `http://localhost:8080/api/usuarios` — debería responder `200 OK` con un arreglo JSON (vacío o con datos, según lo que tenga la BD).
 
+### Datos de prueba con `test.http`
+
+`lims-backend/test.http` contiene el **flujo completo** numerado (ejecútalo en orden sobre una BD recién creada con `docker-compose down -v` + `up -d`):
+
+| Paso | Qué hace |
+|---|---|
+| 0a / 0b | Crea un **Supervisor** (`cristian` / `1234`, id 1) y una **Analista** (`ana` / `1234`, id 2) |
+| 1 – 3b | Crea una muestra, dos análisis del catálogo y los asigna a la muestra |
+| 4 – 4b | La analista ingresa los resultados (la muestra pasa a *En analisis* y luego a *Resultados ingresados*) |
+| 6a / 6b / 7b | Pruebas que **deben fallar** (400): analista intentando aprobar, rechazo sin comentario, aprobar dos veces |
+| 7 – 8 | El supervisor aprueba ambos resultados (la muestra pasa a *Aprobada*) |
+| 9 | Detalle de la muestra con análisis, resultados y **historial de estados** |
+
 ## 5. Levantar el cliente JavaFX
 
 En otra terminal:
@@ -158,7 +171,28 @@ Debería abrirse la ventana **"LIMS - Inicio de Sesión"** (pantalla de login). 
 - Usar **"Crear usuario"** para registrarte.
 - Usar **"¿Olvidaste tu contraseña?"** para enviar una solicitud de reseteo.
 
-Al iniciar sesión correctamente, pasas a la ventana "LIMS - Listado de Muestras" mostrando los datos que devuelve el backend, y desde ahí se puede usar "Agregar Muestra" para crear un registro real de extremo a extremo.
+Al iniciar sesión, la ventana se agranda y aparece el **marco principal**: una barra lateral fija (con el nombre y rol del usuario y el botón **Cerrar sesión**) y el área de contenido a la derecha.
+
+### Pantallas del cliente
+
+| Pantalla | Cómo se llega | Qué permite |
+|---|---|---|
+| Inicio de sesión / Crear usuario / Recuperar contraseña | Al abrir la app | Autenticarse contra el backend (RF06) |
+| **Listado de muestras** (mockup 11.2) | Barra lateral → *Muestras* | Tabla con estados en etiquetas de color, **buscador en vivo** por código/cliente/tipo, doble clic para abrir el detalle |
+| **Registro de muestra** (mockup 11.3) | *+ Nueva muestra* | Crear una muestra (queda registrada a nombre del usuario conectado) |
+| **Detalle de muestra** | Doble clic o *Ver detalle* en el listado | Datos de la muestra; pestaña **Análisis solicitados** (asignar análisis del catálogo e ingresar resultados) y pestaña **Historial de estados** |
+| **Ingreso de resultado** (mockup 11.4) | Detalle → seleccionar análisis → *Ingresar resultado* | Diálogo que avisa **en vivo** si el valor está fuera de rango y exige observaciones (RF02/RF03). Acepta coma decimal (`7,2`) |
+| **Aprobación de resultados** (mockup 11.5) | Barra lateral → *Aprobaciones* | Tabla de resultados pendientes + panel de revisión con botones **Aprobar** / **Rechazar** (comentario obligatorio al rechazar) (RF04) |
+
+Las opciones *Análisis, Reportes, Usuarios y Configuración* de la barra lateral aparecen deshabilitadas ("próximamente").
+
+### Estructura del cliente (lo más importante)
+
+- `Navigator.java` — toda la navegación. Login, Crear usuario y Recuperar contraseña ocupan la ventana completa; el resto de pantallas se cargan **dentro** del marco (`main-layout.fxml` + `MainLayoutController`).
+- `service/ApiClient.java` — único punto de contacto con el backend (HTTP + JSON).
+- `model/` — modelos del cliente. Los nuevos son `record` de Java 21 (`MuestraDetalle`, `AnalisisCatalogo`, `ResultadoPendiente`, etc.): se accede con `nombre()` en vez de `getNombre()`.
+- `ui/Badges.java` — etiquetas de color para estados (se usan en todas las tablas con `col.setCellFactory(c -> Badges.celda())`).
+- `styles.css` — tema completo de la app (barra lateral, tablas, botones, etiquetas). Los estilos del login están al inicio del archivo y el tema de la app al final.
 
 ## 6. Módulos y endpoints del backend (API REST)
 
@@ -166,7 +200,8 @@ El backend expone los siguientes módulos, todos bajo `http://localhost:8080`.
 
 ### Muestras (RF01)
 - `GET  /api/muestras` — lista todas las muestras.
-- `POST /api/muestras` — registra una muestra (genera código único automático).
+- `GET  /api/muestras/{id}` — **detalle** de una muestra: sus datos, cada análisis solicitado con su resultado y su última aprobación, y el **historial de estados**.
+- `POST /api/muestras` — registra una muestra (genera código único automático y deja el primer registro del historial: *Recepción de la muestra*).
 
 ### Catálogo de análisis
 - `GET   /api/analisis` — lista los análisis del catálogo.
@@ -184,19 +219,42 @@ El backend expone los siguientes módulos, todos bajo `http://localhost:8080`.
 - `POST /api/resultados` — ingresa el resultado de un análisis solicitado.
   El backend calcula automáticamente si el valor está dentro del rango del
   análisis (`dentroRango`). Si queda fuera de rango, exige justificación en
-  `observaciones` (ISO 17025). Al ingresarse, el análisis pasa a "Completado".
+  `observaciones` (ISO 17025). Al ingresarse, el análisis pasa a "Completado"
+  y la muestra avanza a "En analisis" (o a "Resultados ingresados" si ya todos
+  sus análisis tienen resultado).
+- `GET  /api/resultados` — lista todos los resultados.
+- `GET  /api/resultados?pendientes=true` — solo los resultados que **aún no tienen evaluación** del supervisor (alimenta la pantalla de Aprobaciones).
 
 ### Aprobación de resultados (RF04)
-- `POST /api/aprobaciones` — un supervisor aprueba o rechaza un resultado
-  (`estadoAprobacion`: "Aprobado" / "Rechazado"). Un rechazo exige `comentario`.
-  Se conserva el historial de evaluaciones. Al evaluar, el estado de la muestra
-  avanza automáticamente: "Rechazada" ante un rechazo, "Aprobada" cuando todos
-  sus análisis quedan aprobados, o "Resultados ingresados" si aún faltan.
+- `POST /api/aprobaciones` — aprueba o rechaza un resultado
+  (`estadoAprobacion`: "Aprobado" / "Rechazado"). Reglas que valida el backend:
+  - Solo puede evaluar un usuario con rol **Supervisor** o **Administrador**.
+  - **Nadie puede evaluar un resultado que él mismo ingresó** (segregación de funciones, ISO 17025).
+  - Un resultado se evalúa **una sola vez** (no se permiten aprobaciones duplicadas).
+  - Un rechazo exige `comentario`.
+
+  Al evaluar, la muestra pasa a "Rechazada" ante un rechazo, o a "Aprobada"
+  cuando todos sus análisis quedan aprobados (si aún faltan, conserva su estado).
+
+### Flujo de estados de la muestra e historial (trazabilidad ISO 17025)
+
+```
+Recibida ──(1er resultado)──► En analisis ──(todos con resultado)──► Resultados ingresados ──(todos aprobados)──► Aprobada
+                                                                                         └──(un rechazo)──────► Rechazada
+```
+
+Todo cambio de estado pasa por `EstadoMuestraService`, que actualiza la muestra **y** registra una fila en
+`muestra_historial_estado` con el estado anterior, el nuevo, el usuario que lo provocó, la fecha y el motivo.
+El historial se consulta en `GET /api/muestras/{id}` y se ve en la pestaña *Historial de estados* del cliente.
+
+> Las muestras creadas antes de este cambio no tienen historial (la tabla ya existía en el esquema, solo que nadie la llenaba).
+>
+> **Pendiente (decisión del equipo):** qué hacer después de un rechazo. Hoy un rechazo deja la muestra en *Rechazada* de forma definitiva; falta definir el flujo de reingreso/corrección del resultado.
 
 ### Usuarios y autenticación (RF06)
 - `GET  /api/usuarios` — lista todos los usuarios (nunca expone `password_hash`).
 - `POST /api/usuarios` — crea un usuario. Body: `idCentro`, `nombre`, `apellido`, `email`, `username`, `password`, `idRol`. La contraseña se guarda con hash BCrypt.
-- `POST /api/usuarios/login` — autentica (`username` + `password`). Devuelve los datos del usuario (sin contraseña) si son correctos, o un 400 con mensaje si no.
+- `POST /api/usuarios/login` — autentica (`username` + `password`). Devuelve los datos del usuario (sin contraseña) si son correctos, o un 400 con mensaje si no. Actualiza `fecha_ultimo_login`.
 - `POST /api/usuarios/solicitar-reset` — flujo de "olvidé mi contraseña": marca al usuario (`username`) con `requiereResetPassword = true`, para que un administrador lo resuelva.
 - `GET  /api/usuarios/solicitudes-reset` — lista los usuarios con una solicitud de reseteo pendiente (pensado para una futura pantalla de administración).
 - `PUT  /api/usuarios/{id}/resetear-password` — define una nueva contraseña para el usuario y limpia la solicitud pendiente. Body: `nuevaPassword`.
@@ -222,21 +280,40 @@ El backend expone los siguientes módulos, todos bajo `http://localhost:8080`.
 - **`404 Not Found` en un endpoint que debería existir (ej. `/api/usuarios`)**: primero confirma con `mvnw clean compile` que el archivo del controlador realmente tiene contenido y compiló (`target\classes\...\NombreController.class` debe existir). Si compiló bien, revisa que no haya **dos procesos Java corriendo a la vez** (`Get-Process java`) — un proceso viejo puede seguir "pegado" al puerto 8080 sirviendo código antiguo mientras el nuevo falla en silencio al no poder tomar el puerto.
 - **`java.net.ConnectException` en el cliente JavaFX al crear un usuario, iniciar sesión, etc.**: el backend no está corriendo (o se cayó) en `localhost:8080`. Verifica con `Invoke-RestMethod -Uri "http://localhost:8080/api/usuarios" -Method Get` antes de usar el cliente.
 - **Error `Column 'fecha_recepcion' cannot be null` al crear una muestra**: la entidad `Muestra` debe tener el campo `fechaRecepcion` anotado con `@CreationTimestamp` (Hibernate), no depender solo del `DEFAULT CURRENT_TIMESTAMP` de MySQL.
+- **`Unknown column 'requiere_reset_password'` (error 500 en casi todos los endpoints)**: tu base local en Docker se creó con un esquema anterior. Recréala con `docker-compose down -v` y `docker-compose up -d` (borra los datos locales) o aplica el `ALTER TABLE` de la sección 2.
+- **`Communications link failure` al arrancar el backend / `Connection refused` en el puerto 8080**: el backend no logró conectarse a MySQL y se cerró. Si en el log dice `No active profile set`, está usando la BD **local**: abre Docker Desktop y ejecuta `docker-compose up -d`. Si querías usar Aiven, arranca con el perfil (ver sección 7).
+- **Aiven: `nslookup` responde `Non-existent domain`**: el servicio de Aiven está **apagado** (el plan gratuito se apaga por inactividad y su dominio desaparece). Quien administra la cuenta debe entrar a console.aiven.io y presionar *Power on*. Mientras tanto se puede trabajar con la BD local.
+- **`unnamed classes are a preview feature` al compilar**: un método quedó pegado **fuera** de la clase (después de la última `}` del archivo). Muévelo dentro de la clase.
+- **400 "Solo un Supervisor o Administrador puede aprobar…" o "No puedes evaluar un resultado que tú mismo ingresaste"**: no es un error, son las reglas de RF04. Para probar el flujo completo se necesitan dos usuarios: un **Analista** que ingresa el resultado y un **Supervisor** distinto que lo aprueba (ver `test.http`, pasos 0a y 0b).
 - **Errores de compilación por paquete no encontrado**: confirmar que el paquete base sea `com.duoc.lims.limsbackend` (backend) y `com.duoc.lims.limsclient` (cliente) en todas las clases — un error de tipeo aquí genera decenas de errores en cadena.
 - **VS Code marca en rojo `getNombre()`, `setApellido()`, etc. como "cannot find symbol" en una entidad (`Usuario`, `Rol`, `Centro`)**: es un falso positivo del Language Server de Java, que no reconoce los getters/setters generados por Lombok (`@Getter`/`@Setter`). No afecta la compilación real con Maven. Se puede limpiar con `Ctrl+Shift+P` → "Java: Clean Java Language Server Workspace", o instalando la extensión "Lombok Annotations Support for VS Code".
 
 ## Estado de los requisitos funcionales
 
-- **RF01** (registro de muestras) — implementado.
-- **RF02** (ingreso de resultados) — implementado.
-- **RF03** (validación de rangos) — implementado.
-- **RF04** (aprobación por supervisor) — implementado.
-- **RF05** (reporte PDF) — pendiente.
-- **RF06** (autenticación con roles) — parcialmente implementado: existen usuarios, roles, login (con BCrypt) y pantallas de Login/Crear usuario/Olvidé mi contraseña en el cliente. Falta: aplicar restricciones reales por rol en el backend (ver sección siguiente) y una pantalla de administración para resolver solicitudes de reseteo de contraseña.
+| Requisito | Backend | Cliente JavaFX |
+|---|---|---|
+| **RF01** Registro de muestras | ✅ | ✅ Listado (con buscador) + registro + detalle |
+| **RF02** Ingreso de resultados | ✅ | ✅ Asignación de análisis + diálogo de ingreso |
+| **RF03** Validación de rangos | ✅ | ✅ Aviso en vivo y observaciones obligatorias |
+| **RF04** Aprobación por supervisor | ✅ Con reglas de rol, segregación y evaluación única | ✅ Pantalla de Aprobaciones |
+| **RF05** Reporte PDF | ❌ Pendiente | ❌ Pendiente (mockup 11.6) |
+| **RF06** Autenticación con roles | ⚠️ Login con BCrypt; faltan restricciones por rol en los endpoints | ⚠️ Barra lateral con usuario y cierre de sesión; falta mostrar opciones según el rol |
+
+Además: historial de estados de la muestra (ISO 17025) ✅.
+
+### Próximos pasos
+
+1. **RF05** — generación del reporte PDF en el backend + vista previa/descarga en el cliente.
+2. **RF06** — seguridad real en `SecurityConfig` (exigir sesión y restringir por rol) y barra lateral según el rol del usuario.
+3. Definir el flujo después de un **rechazo** (reingreso o corrección del resultado).
+4. Quitar el selector de rol de la pantalla pública "Crear usuario" (hoy cualquiera puede registrarse como Administrador).
+5. Pruebas JUnit de los servicios, instalador (`.exe`/`.jar`) y actualización del informe técnico.
 
 ## Estado del proyecto (seguridad)
 
-`SecurityConfig.java` actualmente permite todas las peticiones (`permitAll()`) de forma temporal — el login y el registro de usuarios ya funcionan y validan credenciales correctamente, pero **ningún endpoint exige estar autenticado todavía**: cualquiera puede llamar a `/api/**` sin iniciar sesión. Esto está pendiente como tarea de Fase 2 del cronograma (exigir sesión real + restringir acciones por rol, ej. que solo un Supervisor pueda aprobar, solo un Administrador pueda resetear contraseñas) y **no debe considerarse la configuración final**.
+`SecurityConfig.java` actualmente permite todas las peticiones (`permitAll()`) de forma temporal — el login y el registro de usuarios ya funcionan y validan credenciales correctamente, pero **ningún endpoint exige estar autenticado todavía**: cualquiera puede llamar a `/api/**` sin iniciar sesión. Esto está pendiente como tarea de Fase 2 del cronograma (exigir sesión real + restringir acciones por rol, ej. que solo un Administrador pueda resetear contraseñas) y **no debe considerarse la configuración final**.
+
+> Las reglas de negocio de RF04 (solo Supervisor/Administrador aprueban, nunca su propio resultado) **sí** se validan ya en `AprobacionService`, usando el `idSupervisor` que envía el cliente. Lo que falta es que el backend obtenga el usuario desde una sesión autenticada en vez de confiar en ese id.
 
 ## 7. (Opcional) Usar la base de datos compartida en la nube (Aiven)
 
@@ -261,6 +338,12 @@ Resumen:
    `SPRING_PROFILES_ACTIVE=aiven`.
 4. Ejecuta esa configuración. En el log verás
    `The following profiles are active: aiven`.
+
+   Desde PowerShell, sin IntelliJ:
+   ```powershell
+   .\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=aiven"
+   ```
+   Sin el perfil (`.\mvnw.cmd spring-boot:run`) el backend usa la BD **local** de Docker.
 
 > - La base de Aiven ya tiene esquema y datos: **no correr** `01-schema.sql`
 >   contra ella. Si el esquema de Aiven es anterior a este cambio, recuerda

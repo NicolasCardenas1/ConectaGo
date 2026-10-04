@@ -3,9 +3,11 @@ package com.duoc.lims.limsbackend.service;
 import com.duoc.lims.limsbackend.dto.ResultadoRequestDTO;
 import com.duoc.lims.limsbackend.dto.ResultadoResponseDTO;
 import com.duoc.lims.limsbackend.model.AnalisisCatalogo;
+import com.duoc.lims.limsbackend.model.Muestra;
 import com.duoc.lims.limsbackend.model.MuestraAnalisis;
 import com.duoc.lims.limsbackend.model.Resultado;
 import com.duoc.lims.limsbackend.model.Usuario;
+import com.duoc.lims.limsbackend.model.enums.EstadoMuestra;
 import com.duoc.lims.limsbackend.model.enums.EstadoMuestraAnalisis;
 import com.duoc.lims.limsbackend.repository.MuestraAnalisisRepository;
 import com.duoc.lims.limsbackend.repository.ResultadoRepository;
@@ -23,13 +25,16 @@ public class ResultadoService {
     private final ResultadoRepository resultadoRepository;
     private final MuestraAnalisisRepository muestraAnalisisRepository;
     private final UsuarioRepository usuarioRepository;
+    private final EstadoMuestraService estadoMuestraService;
 
     public ResultadoService(ResultadoRepository resultadoRepository,
                             MuestraAnalisisRepository muestraAnalisisRepository,
-                            UsuarioRepository usuarioRepository) {
+                            UsuarioRepository usuarioRepository,
+                            EstadoMuestraService estadoMuestraService) {
         this.resultadoRepository = resultadoRepository;
         this.muestraAnalisisRepository = muestraAnalisisRepository;
         this.usuarioRepository = usuarioRepository;
+        this.estadoMuestraService = estadoMuestraService;
     }
 
     @Transactional
@@ -79,7 +84,30 @@ public class ResultadoService {
         ma.setFechaCompletado(LocalDateTime.now());
         muestraAnalisisRepository.save(ma);
 
+        // La muestra avanza: "En analisis" con el primer resultado y
+        // "Resultados ingresados" cuando todos sus análisis tienen resultado.
+        actualizarEstadoMuestra(ma, usuario);
+
         return aDTO(guardado);
+    }
+
+    private void actualizarEstadoMuestra(MuestraAnalisis ma, Usuario usuario) {
+        Muestra muestra = ma.getMuestra();
+        // Una muestra rechazada no cambia de estado (el flujo tras un rechazo queda pendiente).
+        if (muestra.getEstado() == EstadoMuestra.RECHAZADA) {
+            return;
+        }
+        boolean todosCompletados = muestraAnalisisRepository.findByMuestra_Id(muestra.getId())
+                .stream()
+                .allMatch(x -> x.getEstado() == EstadoMuestraAnalisis.COMPLETADO);
+
+        if (todosCompletados) {
+            estadoMuestraService.cambiarEstado(muestra, EstadoMuestra.RESULTADOS_INGRESADOS, usuario,
+                    "Todos los análisis tienen resultado");
+        } else {
+            estadoMuestraService.cambiarEstado(muestra, EstadoMuestra.EN_ANALISIS, usuario,
+                    "Resultado ingresado: " + ma.getAnalisis().getNombre());
+        }
     }
 
     @Transactional(readOnly = true)

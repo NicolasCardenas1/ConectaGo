@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.duoc.lims.limsclient.controller.DetalleMuestraController"
+      styleClass="page">
+
+    <HBox spacing="14" alignment="CENTER_LEFT">
+        <Button text="← Volver" styleClass="btn-secondary" onAction="#onVolver"/>
+        <VBox spacing="3">
+            <Label fx:id="lblTitulo" text="Detalle de muestra" styleClass="page-title"/>
+            <Label text="Datos de recepción, análisis solicitados y resultados" styleClass="page-subtitle"/>
+        </VBox>
+    </HBox>
+
+    <!-- Tarjeta con los datos de la muestra -->
+    <GridPane hgap="24" vgap="10" styleClass="card-panel">
+        <columnConstraints>
+            <ColumnConstraints minWidth="110"/>
+            <ColumnConstraints minWidth="220"/>
+            <ColumnConstraints minWidth="110"/>
+            <ColumnConstraints minWidth="220"/>
+        </columnConstraints>
+
+        <Label text="Tipo" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <Label fx:id="lblTipo" styleClass="field-value" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+        <Label text="Estado" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
+        <Label fx:id="lblEstadoMuestra" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+
+        <Label text="Cliente" styleClass="field-name" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+        <Label fx:id="lblCliente" styleClass="field-value" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        <Label text="Prioridad" styleClass="field-name" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
+        <Label fx:id="lblPrioridad" styleClass="field-value" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+
+        <Label text="Recepción" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+        <Label fx:id="lblFecha" styleClass="field-value" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <Label text="Registrada por" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
+        <Label fx:id="lblRegistradoPor" styleClass="field-value" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+
+        <Label text="Observaciones" styleClass="field-name" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        <Label fx:id="lblObservaciones" styleClass="field-value" wrapText="true"
+               GridPane.rowIndex="3" GridPane.columnIndex="1" GridPane.columnSpan="3"/>
+    </GridPane>
+
+    <TabPane styleClass="lims-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+      <Tab text="Análisis solicitados">
+       <VBox spacing="12" style="-fx-padding: 14 0 0 0;">
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Label text="Análisis solicitados" styleClass="section-title"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <ComboBox fx:id="cbAnalisis" promptText="Selecciona un análisis del catálogo" prefWidth="300"
+                  styleClass="form-field"/>
+        <Button fx:id="btnAgregar" text="+ Agregar análisis" styleClass="btn-secondary" onAction="#onAgregarAnalisis"/>
+    </HBox>
+
+    <TableView fx:id="tablaAnalisis" styleClass="lims-table" VBox.vgrow="ALWAYS">
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+        </columnResizePolicy>
+        <columns>
+            <TableColumn fx:id="colAnalisis" text="ANÁLISIS" prefWidth="190"/>
+            <TableColumn fx:id="colRango" text="RANGO NORMAL" prefWidth="150"/>
+            <TableColumn fx:id="colEstadoAnalisis" text="ESTADO" prefWidth="120"/>
+            <TableColumn fx:id="colResultado" text="RESULTADO" prefWidth="200"/>
+            <TableColumn fx:id="colAprobacion" text="APROBACIÓN" prefWidth="120"/>
+        </columns>
+        <placeholder>
+            <Label text="Esta muestra aún no tiene análisis asignados."/>
+        </placeholder>
+    </TableView>
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Button text="Ingresar resultado" styleClass="btn-primary" onAction="#onIngresarResultado"/>
+        <Label text="Selecciona un análisis de la tabla y presiona el botón" styleClass="hint"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblMensaje" wrapText="true"/>
+    </HBox>
+       </VBox>
+      </Tab>
+
+      <Tab text="Historial de estados">
+       <VBox spacing="10" style="-fx-padding: 14 0 0 0;">
+        <Label text="Cada cambio de estado queda registrado con usuario, fecha y motivo (trazabilidad ISO/IEC 17025)."
+               styleClass="hint" wrapText="true"/>
+        <TableView fx:id="tablaHistorial" styleClass="lims-table" VBox.vgrow="ALWAYS">
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+            </columnResizePolicy>
+            <columns>
+                <TableColumn fx:id="colHistFecha" text="FECHA" prefWidth="130"/>
+                <TableColumn fx:id="colHistAnterior" text="DESDE" prefWidth="150"/>
+                <TableColumn fx:id="colHistNuevo" text="HACIA" prefWidth="150"/>
+                <TableColumn fx:id="colHistUsuario" text="USUARIO" prefWidth="140"/>
+                <TableColumn fx:id="colHistComentario" text="MOTIVO" prefWidth="260"/>
+            </columns>
+            <placeholder>
+                <Label text="Sin registros de historial (muestra creada antes de esta función)."/>
+            </placeholder>
+        </TableView>
+       </VBox>
+      </Tab>
+    </TabPane>
+</VBox>

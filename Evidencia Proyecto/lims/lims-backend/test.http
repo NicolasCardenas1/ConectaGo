@@ -1,4 +1,8 @@
-### 0. Crear usuario de prueba (sera el id 1) - ejecutar PRIMERO en una BD nueva
+### ============================================================
+### FLUJO COMPLETO (BD nueva: docker-compose down -v / up -d)
+### ============================================================
+
+### 0a. Crear SUPERVISOR (sera el id 1)
 POST http://localhost:8080/api/usuarios
 Content-Type: application/json
 
@@ -12,7 +16,21 @@ Content-Type: application/json
   "idRol": 2
 }
 
-### 1. Crear muestra (sera la M-2026-0001, id=1)
+### 0b. Crear ANALISTA (sera el id 2)
+POST http://localhost:8080/api/usuarios
+Content-Type: application/json
+
+{
+  "idCentro": 1,
+  "nombre": "Ana",
+  "apellido": "Analista",
+  "email": "ana@lims.cl",
+  "username": "ana",
+  "password": "1234",
+  "idRol": 3
+}
+
+### 1. Crear muestra (id 1) -> historial: "Recepción de la muestra"
 POST http://localhost:8080/api/muestras
 Content-Type: application/json
 
@@ -21,13 +39,10 @@ Content-Type: application/json
   "procedencia": "Clínica Puerto Montt",
   "prioridad": "Media",
   "observaciones": "Muestra de prueba",
-  "idUsuarioRegistro": 1
+  "idUsuarioRegistro": 2
 }
 
-### 2. Listar muestras
-GET http://localhost:8080/api/muestras
-
-### 3. Crear un análisis en el catálogo
+### 2. Crear dos análisis en el catálogo (ids 1 y 2)
 POST http://localhost:8080/api/analisis
 Content-Type: application/json
 
@@ -41,16 +56,33 @@ Content-Type: application/json
   "valorMaxNormal": 11.0
 }
 
-### 4. Asignar ese análisis a la muestra 1
-POST http://localhost:8080/api/muestra-analisis
+### 2b.
+POST http://localhost:8080/api/analisis
 Content-Type: application/json
 
 {
-  "idMuestra": 1,
-  "idAnalisis": 1
+  "nombre": "pH",
+  "descripcion": "Potencial de hidrógeno",
+  "unidadMedida": "pH",
+  "metodoReferencia": "NCh 409",
+  "tiempoEstimadoHrs": 1,
+  "valorMinNormal": 6.5,
+  "valorMaxNormal": 8.5
 }
 
-### 5. Ingresar el resultado (ajusta idMuestraAnalisis según lo que devuelva el paso 4)
+### 3. Asignar ambos análisis a la muestra 1 (muestra_analisis ids 1 y 2)
+POST http://localhost:8080/api/muestra-analisis
+Content-Type: application/json
+
+{ "idMuestra": 1, "idAnalisis": 1 }
+
+### 3b.
+POST http://localhost:8080/api/muestra-analisis
+Content-Type: application/json
+
+{ "idMuestra": 1, "idAnalisis": 2 }
+
+### 4. La ANALISTA ingresa el primer resultado -> muestra pasa a "En analisis"
 POST http://localhost:8080/api/resultados
 Content-Type: application/json
 
@@ -58,32 +90,69 @@ Content-Type: application/json
   "idMuestraAnalisis": 1,
   "valorResultado": 7.2,
   "instrumentoUtilizado": "Analizador XN-1000",
-  "idUsuarioIngreso": 1,
-  "observaciones": "Dentro de rango normal"
+  "idUsuarioIngreso": 2,
+  "observaciones": null
 }
 
-### 6. Resultados pendientes de aprobación (debe aparecer el del paso 5)
-GET http://localhost:8080/api/resultados?pendientes=true
-
-### 7. Detalle de la muestra 1 (resultado presente, estadoAprobacion = null)
-GET http://localhost:8080/api/muestras/1
-
-### 8. Aprobar el resultado (ajusta idResultado según lo que devuelva el paso 5)
-POST http://localhost:8080/api/aprobaciones
+### 4b. La ANALISTA ingresa el segundo -> muestra pasa a "Resultados ingresados"
+POST http://localhost:8080/api/resultados
 Content-Type: application/json
 
 {
-  "idResultado": 1,
-  "idSupervisor": 1,
-  "estadoAprobacion": "Aprobado",
-  "comentario": null
+  "idMuestraAnalisis": 2,
+  "valorResultado": 7.0,
+  "instrumentoUtilizado": "pHmetro",
+  "idUsuarioIngreso": 2,
+  "observaciones": null
 }
 
-### 9. Pendientes otra vez (debe venir vacío: [])
+### 5. Pendientes de aprobación (deben aparecer los 2)
 GET http://localhost:8080/api/resultados?pendientes=true
 
-### 10. Detalle otra vez (estadoAprobacion = "Aprobado", estado de la muestra = "Aprobada")
+### ------------------------------------------------------------
+### PRUEBAS QUE DEBEN FALLAR (400)
+### ------------------------------------------------------------
+
+### 6a. La ANALISTA intenta aprobar -> "Solo un Supervisor o Administrador..."
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+
+{ "idResultado": 1, "idSupervisor": 2, "estadoAprobacion": "Aprobado", "comentario": null }
+
+### 6b. Rechazo sin comentario -> "Un rechazo debe incluir un comentario..."
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+
+{ "idResultado": 1, "idSupervisor": 1, "estadoAprobacion": "Rechazado", "comentario": null }
+
+### ------------------------------------------------------------
+### APROBACIONES CORRECTAS
+### ------------------------------------------------------------
+
+### 7. El SUPERVISOR aprueba el resultado 1 (la muestra sigue en "Resultados ingresados")
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+
+{ "idResultado": 1, "idSupervisor": 1, "estadoAprobacion": "Aprobado", "comentario": null }
+
+### 7b. Aprobar OTRA VEZ el mismo -> DEBE FALLAR: "Este resultado ya fue evaluado anteriormente"
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+
+{ "idResultado": 1, "idSupervisor": 1, "estadoAprobacion": "Aprobado", "comentario": null }
+
+### 8. El SUPERVISOR aprueba el resultado 2 -> muestra pasa a "Aprobada"
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+
+{ "idResultado": 2, "idSupervisor": 1, "estadoAprobacion": "Aprobado", "comentario": null }
+
+### 9. Detalle: estado "Aprobada" + historial con 4 registros
+###    (Recepción -> En analisis -> Resultados ingresados -> Aprobada)
 GET http://localhost:8080/api/muestras/1
 
-### 11. Todos los resultados
-GET http://localhost:8080/api/resultados
+### 10. Pendientes otra vez (debe venir vacío: [])
+GET http://localhost:8080/api/resultados?pendientes=true
+
+### 11. Listar muestras
+GET http://localhost:8080/api/muestras

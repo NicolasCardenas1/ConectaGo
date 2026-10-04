@@ -23,8 +23,7 @@ public class RegistroMuestraController {
     @FXML private Button btnGuardar;
     @FXML private Button btnCancelar;
 
-    // Temporal: hasta que exista login, se registra siempre con este usuario de prueba.
-    private static final int ID_USUARIO_REGISTRO_TEMPORAL = 1;
+
 
     private final ApiClient apiClient = new ApiClient();
 
@@ -57,7 +56,7 @@ public class RegistroMuestraController {
         datos.setProcedencia(cliente);
         datos.setPrioridad(prioridad);
         datos.setObservaciones(txtObservaciones.getText());
-        datos.setIdUsuarioRegistro(ID_USUARIO_REGISTRO_TEMPORAL);
+        datos.setIdUsuarioRegistro(Navigator.getUsuarioActual().getId());
 
         btnGuardar.setDisable(true);
         lblEstado.setText("Guardando...");

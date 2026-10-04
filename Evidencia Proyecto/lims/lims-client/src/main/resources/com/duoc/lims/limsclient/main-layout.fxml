@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- Marco principal de la app (después del login): barra lateral fija + área de contenido.
+     Navigator cambia solo lo que va dentro de "contenido". -->
+<BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.duoc.lims.limsclient.controller.MainLayoutController"
+            styleClass="app-root">
+
+    <left>
+        <VBox styleClass="sidebar" prefWidth="210" minWidth="210">
+            <Label text="LIMS · Laboratorio" styleClass="sidebar-title"/>
+
+            <Button fx:id="btnMuestras" text="Muestras" styleClass="sidebar-item"
+                    maxWidth="Infinity" onAction="#onMuestras"/>
+            <Button fx:id="btnAprobaciones" text="Aprobaciones" styleClass="sidebar-item"
+                    maxWidth="Infinity" onAction="#onAprobaciones"/>
+            <Button text="Análisis" styleClass="sidebar-item" maxWidth="Infinity" disable="true"/>
+            <Button text="Reportes" styleClass="sidebar-item" maxWidth="Infinity" disable="true"/>
+            <Button text="Usuarios" styleClass="sidebar-item" maxWidth="Infinity" disable="true"/>
+            <Button text="Configuración" styleClass="sidebar-item" maxWidth="Infinity" disable="true"/>
+            <Label text="Opciones en gris: próximamente" styleClass="sidebar-caption"/>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <VBox styleClass="sidebar-user">
+                <Label fx:id="lblUsuario" styleClass="sidebar-user-name"/>
+                <Label fx:id="lblRol" styleClass="sidebar-user-role"/>
+                <Button text="Cerrar sesión" styleClass="sidebar-logout" onAction="#onCerrarSesion"/>
+            </VBox>
+        </VBox>
+    </left>
+
+    <center>
+        <StackPane fx:id="contenido" styleClass="content-area"/>
+    </center>
+</BorderPane>

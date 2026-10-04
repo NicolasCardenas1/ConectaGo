@@ -1,5 +1,7 @@
 package com.duoc.lims.limsclient;
 
+import com.duoc.lims.limsclient.controller.DetalleMuestraController;
+import com.duoc.lims.limsclient.controller.MainLayoutController;
 import com.duoc.lims.limsclient.model.UsuarioResponse;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -7,10 +9,16 @@ import javafx.stage.Stage;
 
 import java.io.IOException;
 
+/**
+ * Navegación de la app.
+ * - Login, Crear usuario y Recuperar contraseña ocupan la ventana completa.
+ * - El resto de pantallas se muestran DENTRO del marco principal (barra lateral + contenido).
+ */
 public class Navigator {
 
     private static Stage stage;
     private static UsuarioResponse usuarioActual;
+    private static MainLayoutController marco;   // null mientras no se haya iniciado sesión
 
     public static void setStage(Stage primaryStage) {
         stage = primaryStage;
@@ -24,33 +32,76 @@ public class Navigator {
         return usuarioActual;
     }
 
+    // ---------- Pantallas a ventana completa (sin barra lateral) ----------
+
     public static void irALogin() {
         usuarioActual = null;
-        cambiarVista("login-view.fxml", "LIMS - Inicio de Sesión");
+        marco = null;
+        cambiarVentanaCompleta("login-view.fxml", "LIMS - Inicio de Sesión");
     }
 
     public static void irACrearUsuario() {
-        cambiarVista("crear-usuario-view.fxml", "LIMS - Crear Usuario");
+        cambiarVentanaCompleta("crear-usuario-view.fxml", "LIMS - Crear Usuario");
     }
 
     public static void irARecuperarPassword() {
-        cambiarVista("recuperar-password-view.fxml", "LIMS - Recuperar Contraseña");
+        cambiarVentanaCompleta("recuperar-password-view.fxml", "LIMS - Recuperar Contraseña");
     }
 
+    // ---------- Pantallas dentro del marco (con barra lateral) ----------
+
     public static void irAListado() {
-        cambiarVista("listado-muestras.fxml", "LIMS - Listado de Muestras");
+        mostrarEnMarco("listado-muestras.fxml", "Listado de Muestras", "muestras");
     }
 
     public static void irARegistroMuestra() {
-        cambiarVista("registro-muestra.fxml", "LIMS - Registrar Nueva Muestra");
+        mostrarEnMarco("registro-muestra.fxml", "Registrar Nueva Muestra", "muestras");
     }
 
-    private static void cambiarVista(String fxml, String titulo) {
+    public static void irAAprobaciones() {
+        mostrarEnMarco("aprobaciones.fxml", "Aprobación de Resultados", "aprobaciones");
+    }
+
+    public static void irADetalleMuestra(int idMuestra) {
+        DetalleMuestraController controller =
+                mostrarEnMarco("detalle-muestra.fxml", "Detalle de Muestra", "muestras");
+        controller.cargarMuestra(idMuestra);
+    }
+
+    // ---------- Helpers ----------
+
+    private static void cambiarVentanaCompleta(String fxml, String titulo) {
         try {
             FXMLLoader loader = new FXMLLoader(Navigator.class.getResource(fxml));
             Parent root = loader.load();
             stage.getScene().setRoot(root);
             stage.setTitle(titulo);
+        } catch (IOException e) {
+            throw new RuntimeException("No se pudo cargar la vista: " + fxml, e);
+        }
+    }
+
+    private static <T> T mostrarEnMarco(String fxml, String titulo, String seccion) {
+        try {
+            // La primera vez después del login se carga el marco y se agranda la ventana.
+            if (marco == null) {
+                FXMLLoader loaderMarco = new FXMLLoader(Navigator.class.getResource("main-layout.fxml"));
+                Parent raiz = loaderMarco.load();
+                stage.getScene().setRoot(raiz);
+                marco = loaderMarco.getController();
+                if (stage.getWidth() < 1150) {
+                    stage.setWidth(1150);
+                    stage.setHeight(720);
+                    stage.centerOnScreen();
+                }
+            }
+
+            FXMLLoader loader = new FXMLLoader(Navigator.class.getResource(fxml));
+            Parent vista = loader.load();
+            marco.setContenido(vista);
+            marco.marcarSeccion(seccion);
+            stage.setTitle("LIMS - " + titulo);
+            return loader.getController();
         } catch (IOException e) {
             throw new RuntimeException("No se pudo cargar la vista: " + fxml, e);
         }

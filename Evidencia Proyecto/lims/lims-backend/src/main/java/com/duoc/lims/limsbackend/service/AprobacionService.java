@@ -12,33 +12,38 @@ import com.duoc.lims.limsbackend.model.enums.EstadoMuestra;
 import com.duoc.lims.limsbackend.model.enums.EstadoMuestraAnalisis;
 import com.duoc.lims.limsbackend.repository.AprobacionRepository;
 import com.duoc.lims.limsbackend.repository.MuestraAnalisisRepository;
-import com.duoc.lims.limsbackend.repository.MuestraRepository;
 import com.duoc.lims.limsbackend.repository.ResultadoRepository;
 import com.duoc.lims.limsbackend.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
+/** RF04 — Aprobación o rechazo de resultados por un supervisor. */
 @Service
 public class AprobacionService {
+
+    /** Roles que pueden aprobar/rechazar resultados (decisión del equipo). */
+    private static final Set<String> ROLES_APROBADORES = Set.of("Supervisor", "Administrador");
 
     private final AprobacionRepository aprobacionRepository;
     private final ResultadoRepository resultadoRepository;
     private final UsuarioRepository usuarioRepository;
     private final MuestraAnalisisRepository muestraAnalisisRepository;
-    private final MuestraRepository muestraRepository;
+    private final EstadoMuestraService estadoMuestraService;
 
     public AprobacionService(AprobacionRepository aprobacionRepository,
                              ResultadoRepository resultadoRepository,
                              UsuarioRepository usuarioRepository,
                              MuestraAnalisisRepository muestraAnalisisRepository,
-                             MuestraRepository muestraRepository) {
+                             EstadoMuestraService estadoMuestraService) {
         this.aprobacionRepository = aprobacionRepository;
         this.resultadoRepository = resultadoRepository;
         this.usuarioRepository = usuarioRepository;
         this.muestraAnalisisRepository = muestraAnalisisRepository;
-        this.muestraRepository = muestraRepository;
+        this.estadoMuestraService = estadoMuestraService;
     }
 
     @Transactional
@@ -50,6 +55,13 @@ public class AprobacionService {
         Usuario supervisor = usuarioRepository.findById(dto.getIdSupervisor())
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No existe el usuario (supervisor) con id " + dto.getIdSupervisor()));
+
+        validarQuePuedeEvaluar(supervisor, resultado);
+
+        // Un resultado se evalúa una sola vez (evita aprobaciones duplicadas).
+        if (aprobacionRepository.existsByResultado_Id(resultado.getId())) {
+            throw new IllegalArgumentException("Este resultado ya fue evaluado anteriormente");
+        }
 
         EstadoAprobacion estado = EstadoAprobacion.fromValorDb(dto.getEstadoAprobacion());
 
@@ -69,42 +81,54 @@ public class AprobacionService {
 
         // --- Avanzar el estado de la muestra según la evaluación ---
         Muestra muestra = resultado.getMuestraAnalisis().getMuestra();
-        actualizarEstadoMuestra(muestra, estado);
+        actualizarEstadoMuestra(muestra, resultado, estado, supervisor, dto.getComentario());
 
         return aDTO(guardada, muestra);
     }
 
-    private void actualizarEstadoMuestra(Muestra muestra, EstadoAprobacion estado) {
+    // ---------- reglas ----------
+
+    private void validarQuePuedeEvaluar(Usuario supervisor, Resultado resultado) {
+        if (!supervisor.isActivo()) {
+            throw new IllegalArgumentException("El usuario evaluador está inactivo");
+        }
+
+        String rol = supervisor.getRol().getNombreRol();
+        if (!ROLES_APROBADORES.contains(rol)) {
+            throw new IllegalArgumentException(
+                    "Solo un Supervisor o Administrador puede aprobar o rechazar resultados (tu rol: " + rol + ")");
+        }
+
+        // Segregación de funciones (ISO 17025): quien ingresa un resultado no puede aprobarlo.
+        if (resultado.getUsuarioIngreso().getId().equals(supervisor.getId())) {
+            throw new IllegalArgumentException(
+                    "No puedes evaluar un resultado que tú mismo ingresaste");
+        }
+    }
+
+    private void actualizarEstadoMuestra(Muestra muestra, Resultado resultado, EstadoAprobacion estado,
+                                         Usuario supervisor, String comentario) {
+        String analisis = resultado.getMuestraAnalisis().getAnalisis().getNombre();
+
         if (estado == EstadoAprobacion.RECHAZADO) {
             // Un solo rechazo deja la muestra como Rechazada.
-            muestra.setEstado(EstadoMuestra.RECHAZADA);
-        } else {
-            // Aprobado: la muestra queda Aprobada solo si TODOS sus análisis
-            // están completados y su último estado no es un rechazo.
-            if (todosLosAnalisisAprobados(muestra)) {
-                muestra.setEstado(EstadoMuestra.APROBADA);
-            } else {
-                muestra.setEstado(EstadoMuestra.RESULTADOS_INGRESADOS);
-            }
+            // (El flujo de reingreso tras un rechazo queda pendiente por decisión del equipo.)
+            estadoMuestraService.cambiarEstado(muestra, EstadoMuestra.RECHAZADA, supervisor,
+                    "Rechazado " + analisis + ": " + comentario);
+        } else if (todosLosAnalisisAprobados(muestra)) {
+            estadoMuestraService.cambiarEstado(muestra, EstadoMuestra.APROBADA, supervisor,
+                    "Todos los análisis aprobados");
         }
-        muestraRepository.save(muestra);
+        // Si aún faltan análisis por aprobar, la muestra conserva su estado actual.
     }
 
     private boolean todosLosAnalisisAprobados(Muestra muestra) {
-        List<MuestraAnalisis> analisis =
-                muestraAnalisisRepository.findByMuestra_Id(muestra.getId());
-
+        List<MuestraAnalisis> analisis = muestraAnalisisRepository.findByMuestra_Id(muestra.getId());
         if (analisis.isEmpty()) {
             return false;
         }
-
         for (MuestraAnalisis ma : analisis) {
-            // Todos deben estar completados...
-            if (ma.getEstado() != EstadoMuestraAnalisis.COMPLETADO) {
-                return false;
-            }
-            // ...y su resultado debe tener una última aprobación "Aprobado".
-            if (!resultadoAprobado(ma)) {
+            if (ma.getEstado() != EstadoMuestraAnalisis.COMPLETADO || !resultadoAprobado(ma)) {
                 return false;
             }
         }
@@ -112,20 +136,14 @@ public class AprobacionService {
     }
 
     private boolean resultadoAprobado(MuestraAnalisis ma) {
-        List<Resultado> resultados = resultadoRepository.findAll().stream()
-                .filter(r -> r.getMuestraAnalisis().getId().equals(ma.getId()))
-                .toList();
-        if (resultados.isEmpty()) {
+        Optional<Resultado> resultado = resultadoRepository.findByMuestraAnalisis_Id(ma.getId());
+        if (resultado.isEmpty()) {
             return false;
         }
-        Resultado r = resultados.get(0);
-        List<Aprobacion> aprobaciones = aprobacionRepository.findByResultado_Id(r.getId());
-        if (aprobaciones.isEmpty()) {
-            return false;
-        }
-        // La última aprobación registrada manda.
-        Aprobacion ultima = aprobaciones.get(aprobaciones.size() - 1);
-        return ultima.getEstadoAprobacion() == EstadoAprobacion.APROBADO;
+        // La última evaluación registrada es la que manda.
+        return aprobacionRepository.findTopByResultado_IdOrderByIdDesc(resultado.get().getId())
+                .map(a -> a.getEstadoAprobacion() == EstadoAprobacion.APROBADO)
+                .orElse(false);
     }
 
     private AprobacionResponseDTO aDTO(Aprobacion a, Muestra muestra) {

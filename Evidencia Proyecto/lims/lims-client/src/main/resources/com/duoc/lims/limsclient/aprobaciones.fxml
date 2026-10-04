@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.duoc.lims.limsclient.controller.AprobacionesController"
+      styleClass="page">
+
+    <VBox spacing="3">
+        <Label text="Aprobación de Resultados" styleClass="page-title"/>
+        <Label text="Resultados ingresados por analistas que esperan la revisión de un supervisor (RF04)"
+               styleClass="page-subtitle"/>
+    </VBox>
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <Button text="Actualizar" styleClass="btn-secondary" onAction="#onActualizar"/>
+        <Label fx:id="lblContador" styleClass="hint"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblMensaje" wrapText="true"/>
+    </HBox>
+
+    <HBox spacing="16" VBox.vgrow="ALWAYS">
+
+        <!-- Lista de pendientes -->
+        <TableView fx:id="tablaPendientes" styleClass="lims-table" HBox.hgrow="ALWAYS">
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+            </columnResizePolicy>
+            <columns>
+                <TableColumn fx:id="colMuestra" text="MUESTRA" prefWidth="110"/>
+                <TableColumn fx:id="colAnalisis" text="ANÁLISIS" prefWidth="150"/>
+                <TableColumn fx:id="colValor" text="VALOR" prefWidth="100"/>
+                <TableColumn fx:id="colControl" text="CONTROL" prefWidth="120"/>
+                <TableColumn fx:id="colAnalista" text="INGRESADO POR" prefWidth="130"/>
+                <TableColumn fx:id="colFecha" text="FECHA" prefWidth="120"/>
+            </columns>
+            <placeholder>
+                <Label text="No hay resultados pendientes de aprobación."/>
+            </placeholder>
+        </TableView>
+
+        <!-- Panel de revisión del resultado seleccionado -->
+        <VBox fx:id="panelRevision" styleClass="card-panel" spacing="8" prefWidth="330" minWidth="330">
+            <Label text="Revisión" styleClass="section-title"/>
+            <Label fx:id="lblDetTitulo" text="Selecciona un resultado de la tabla" styleClass="page-subtitle" wrapText="true"/>
+            <Separator/>
+
+            <GridPane hgap="12" vgap="8">
+                <columnConstraints>
+                    <ColumnConstraints minWidth="100"/>
+                    <ColumnConstraints hgrow="ALWAYS"/>
+                </columnConstraints>
+
+                <Label text="Valor" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+                <Label fx:id="lblDetValor" styleClass="field-value" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+                <Label text="Rango normal" styleClass="field-name" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+                <Label fx:id="lblDetRango" styleClass="field-value" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+                <Label text="Control" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+                <Label fx:id="lblDetControl" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+
+                <Label text="Instrumento" styleClass="field-name" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+                <Label fx:id="lblDetInstrumento" styleClass="field-value" wrapText="true" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+
+                <Label text="Ingresado por" styleClass="field-name" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+                <Label fx:id="lblDetAnalista" styleClass="field-value" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+
+                <Label text="Fecha" styleClass="field-name" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+                <Label fx:id="lblDetFecha" styleClass="field-value" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+            </GridPane>
+
+            <Label text="Observaciones del analista" styleClass="field-name"/>
+            <Label fx:id="lblDetObservaciones" styleClass="field-value" wrapText="true"/>
+
+            <Separator/>
+
+            <Label text="Comentario del supervisor" styleClass="field-name"/>
+            <TextArea fx:id="txtComentario" prefRowCount="3" wrapText="true"
+                      promptText="Obligatorio si rechazas el resultado"/>
+
+            <Region VBox.vgrow="ALWAYS"/>
+
+            <HBox spacing="10" alignment="CENTER_RIGHT">
+                <Button fx:id="btnRechazar" text="Rechazar" styleClass="btn-rechazar" onAction="#onRechazar"/>
+                <Button fx:id="btnAprobar" text="Aprobar" styleClass="btn-aprobar" onAction="#onAprobar"/>
+            </HBox>
+        </VBox>
+    </HBox>
+</VBox>

@@ -12,6 +12,7 @@ import com.duoc.lims.limsbackend.repository.UsuarioRepository;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -72,6 +73,9 @@ public class UsuarioService {
         if (!passwordEncoder.matches(dto.getPassword(), usuario.getPasswordHash())) {
             throw new IllegalArgumentException("Usuario o contraseña incorrectos");
         }
+
+        usuario.setFechaUltimoLogin(LocalDateTime.now());
+        usuarioRepository.save(usuario);
 
         return toResponseDTO(usuario);
     }

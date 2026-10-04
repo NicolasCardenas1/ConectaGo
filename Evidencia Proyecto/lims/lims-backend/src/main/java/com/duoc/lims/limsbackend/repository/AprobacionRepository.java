@@ -10,4 +10,6 @@ public interface AprobacionRepository extends JpaRepository<Aprobacion, Integer>
     List<Aprobacion> findByResultado_Id(Integer idResultado);
 
     Optional<Aprobacion> findTopByResultado_IdOrderByIdDesc(Integer idResultado);
+
+    boolean existsByResultado_Id(Integer idResultado);
 }
