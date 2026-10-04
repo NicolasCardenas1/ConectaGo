@@ -90,9 +90,8 @@ Notas importantes para tus compañeros:
   docker-compose up -d
   ```
   (`-v` borra también el volumen `lims-data`, no solo el contenedor).
-- Después del primer arranque, hay que insertar manualmente un usuario de prueba (todavía no existe login real), porque `Muestra` requiere un `usuario_registro` válido por llave foránea. **Las tablas `centros` y `roles` ya vienen precargadas por `01-schema.sql`**, así que solo hace falta el `INSERT` en `usuarios`.
+- **Ya existe un sistema de usuarios real** (ver sección 6 más abajo). Para crear tu primer usuario de prueba, lo más simple es levantar el backend y el cliente (secciones 4 y 5) y usar la pantalla **"Crear usuario"** del login, o hacer un `POST /api/usuarios`. Como alternativa (por ejemplo, si el backend aún no está corriendo y necesitas un usuario para pruebas vía SQL directo), puedes insertarlo manualmente:
 
-  Primero entra al cliente MySQL dentro del contenedor (no pegues SQL directo en PowerShell, PowerShell no entiende sintaxis SQL):
   ```
   docker exec -it lims-mysql mysql -u lims_user -plims_pass lims_db
   ```
@@ -101,6 +100,8 @@ Notas importantes para tus compañeros:
   INSERT INTO usuarios (id_centro, nombre, apellido, email, username, password_hash, id_rol)
   VALUES (1, 'Tu Nombre', 'Tu Apellido', 'tu_correo@lims.cl', 'tu_usuario', 'pendiente-hasta-login', 3);
   ```
+  > ⚠️ Un usuario insertado así por SQL directo **no podrá iniciar sesión** por la pantalla de login, porque `password_hash` no queda como un hash BCrypt válido — solo sirve como llave foránea para pruebas de `muestras.usuario_registro`. Para un usuario que sí pueda loguearse, créalo por `POST /api/usuarios` o por la pantalla "Crear usuario" del cliente.
+
   Donde:
   - `id_centro = 1` → "Laboratorio Central" (precargado en la tabla `centros`).
   - `id_rol`: `1 = Administrador`, `2 = Supervisor`, `3 = Analista` (precargados en la tabla `roles`).
@@ -110,7 +111,11 @@ Notas importantes para tus compañeros:
   SELECT * FROM centros;
   SELECT * FROM roles;
   ```
-- **Antes de que Claudio y Nicolás clonen el repo**, confirma que `lims-backend/db-init/01-schema.sql` ya tenga los campos `tipo_muestra` y los 3 valores de `prioridad` que agregamos a mano por `ALTER TABLE` — si ese archivo quedó desactualizado, sus bases de datos se crearán con el esquema viejo.
+- **Antes de que Claudio y Nicolás clonen el repo**, confirma que `lims-backend/db-init/01-schema.sql` ya tenga los campos `tipo_muestra`, los 3 valores de `prioridad`, y la columna `requiere_reset_password` de `usuarios` — si ese archivo quedó desactualizado, sus bases de datos se crearán con el esquema viejo.
+- **Si tu base de datos ya existía antes de este cambio** (es decir, no la recreaste desde cero), necesitas agregar la columna nueva a mano:
+  ```sql
+  ALTER TABLE usuarios ADD COLUMN requiere_reset_password BOOLEAN NOT NULL DEFAULT FALSE;
+  ```
 
 ## 3. Configurar la conexión del backend
 
@@ -136,7 +141,7 @@ cd lims-backend
 .\mvnw.cmd spring-boot:run
 ```
 
-Verificación rápida: abre el archivo `.http` de pruebas (o un navegador) en `http://localhost:8080/api/muestras` — debería responder `200 OK` con un arreglo JSON (vacío o con datos, según lo que tenga la BD).
+Verificación rápida: abre el archivo `.http` de pruebas (o un navegador) en `http://localhost:8080/api/usuarios` — debería responder `200 OK` con un arreglo JSON (vacío o con datos, según lo que tenga la BD).
 
 ## 5. Levantar el cliente JavaFX
 
@@ -147,11 +152,17 @@ cd lims-client
 .\mvnw.cmd clean compile
 .\mvnw.cmd javafx:run
 ```
+
+Debería abrirse la ventana **"LIMS - Inicio de Sesión"** (pantalla de login). Desde ahí puedes:
+- Iniciar sesión con un usuario existente.
+- Usar **"Crear usuario"** para registrarte.
+- Usar **"¿Olvidaste tu contraseña?"** para enviar una solicitud de reseteo.
+
+Al iniciar sesión correctamente, pasas a la ventana "LIMS - Listado de Muestras" mostrando los datos que devuelve el backend, y desde ahí se puede usar "Agregar Muestra" para crear un registro real de extremo a extremo.
+
 ## 6. Módulos y endpoints del backend (API REST)
 
 El backend expone los siguientes módulos, todos bajo `http://localhost:8080`.
-Mientras no exista login (RF06), los campos de usuario (`idUsuarioRegistro`,
-`idUsuarioIngreso`, `idSupervisor`) se envían en el cuerpo de la petición.
 
 ### Muestras (RF01)
 - `GET  /api/muestras` — lista todas las muestras.
@@ -182,8 +193,15 @@ Mientras no exista login (RF06), los campos de usuario (`idUsuarioRegistro`,
   avanza automáticamente: "Rechazada" ante un rechazo, "Aprobada" cuando todos
   sus análisis quedan aprobados, o "Resultados ingresados" si aún faltan.
 
+### Usuarios y autenticación (RF06)
+- `GET  /api/usuarios` — lista todos los usuarios (nunca expone `password_hash`).
+- `POST /api/usuarios` — crea un usuario. Body: `idCentro`, `nombre`, `apellido`, `email`, `username`, `password`, `idRol`. La contraseña se guarda con hash BCrypt.
+- `POST /api/usuarios/login` — autentica (`username` + `password`). Devuelve los datos del usuario (sin contraseña) si son correctos, o un 400 con mensaje si no.
+- `POST /api/usuarios/solicitar-reset` — flujo de "olvidé mi contraseña": marca al usuario (`username`) con `requiereResetPassword = true`, para que un administrador lo resuelva.
+- `GET  /api/usuarios/solicitudes-reset` — lista los usuarios con una solicitud de reseteo pendiente (pensado para una futura pantalla de administración).
+- `PUT  /api/usuarios/{id}/resetear-password` — define una nueva contraseña para el usuario y limpia la solicitud pendiente. Body: `nuevaPassword`.
 
-Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que devuelve el backend, y desde ahí se puede usar "Agregar Muestra" para crear un registro real de extremo a extremo.
+> ⚠️ Mientras no exista autorización por rol en `SecurityConfig` (ver sección "Estado del proyecto (seguridad)"), todos estos endpoints son de acceso libre — cualquiera puede llamarlos sin estar autenticado. El cliente JavaFX ya tiene pantallas de Login/Crear usuario/Recuperar contraseña conectadas a estos endpoints, pero la restricción real de "solo un Administrador puede resetear contraseñas" todavía no está aplicada del lado del servidor.
 
 ## Problemas comunes
 
@@ -201,8 +219,11 @@ Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que
 - **`ERROR 1364: Field 'id_centro' doesn't have a default value` (u otro campo obligatorio) al insertar en `usuarios`**: la tabla real tiene columnas por llave foránea (`id_centro`, `id_rol`) que no estaban en un ejemplo anterior de este README. Usa el `INSERT` completo de la sección 2 más arriba. Si necesitas confirmar las columnas reales, ejecuta `DESCRIBE usuarios;` dentro del cliente MySQL del contenedor.
 - **`ClassNotFoundException` al hacer `javafx:run`**: revisar que en `lims-client/pom.xml`, dentro del plugin `javafx-maven-plugin`, el `<mainClass>` esté como clase simple (`com.duoc.lims.limsclient.HelloApplication`), **sin** prefijo de módulo (`module/Class`). El proyecto no usa `module-info.java`.
 - **`401 Unauthorized` o `403 Forbidden` en los endpoints**: el backend ya trae un `SecurityConfig` temporal que permite todo bajo `/api/**` y `/error`. Si aparece de nuevo, revisar que esa clase esté presente y no haya sido sobrescrita.
+- **`404 Not Found` en un endpoint que debería existir (ej. `/api/usuarios`)**: primero confirma con `mvnw clean compile` que el archivo del controlador realmente tiene contenido y compiló (`target\classes\...\NombreController.class` debe existir). Si compiló bien, revisa que no haya **dos procesos Java corriendo a la vez** (`Get-Process java`) — un proceso viejo puede seguir "pegado" al puerto 8080 sirviendo código antiguo mientras el nuevo falla en silencio al no poder tomar el puerto.
+- **`java.net.ConnectException` en el cliente JavaFX al crear un usuario, iniciar sesión, etc.**: el backend no está corriendo (o se cayó) en `localhost:8080`. Verifica con `Invoke-RestMethod -Uri "http://localhost:8080/api/usuarios" -Method Get` antes de usar el cliente.
 - **Error `Column 'fecha_recepcion' cannot be null` al crear una muestra**: la entidad `Muestra` debe tener el campo `fechaRecepcion` anotado con `@CreationTimestamp` (Hibernate), no depender solo del `DEFAULT CURRENT_TIMESTAMP` de MySQL.
 - **Errores de compilación por paquete no encontrado**: confirmar que el paquete base sea `com.duoc.lims.limsbackend` (backend) y `com.duoc.lims.limsclient` (cliente) en todas las clases — un error de tipeo aquí genera decenas de errores en cadena.
+- **VS Code marca en rojo `getNombre()`, `setApellido()`, etc. como "cannot find symbol" en una entidad (`Usuario`, `Rol`, `Centro`)**: es un falso positivo del Language Server de Java, que no reconoce los getters/setters generados por Lombok (`@Getter`/`@Setter`). No afecta la compilación real con Maven. Se puede limpiar con `Ctrl+Shift+P` → "Java: Clean Java Language Server Workspace", o instalando la extensión "Lombok Annotations Support for VS Code".
 
 ## Estado de los requisitos funcionales
 
@@ -211,13 +232,13 @@ Debería abrirse la ventana "LIMS - Listado de Muestras" mostrando los datos que
 - **RF03** (validación de rangos) — implementado.
 - **RF04** (aprobación por supervisor) — implementado.
 - **RF05** (reporte PDF) — pendiente.
-- **RF06** (autenticación con roles) — pendiente.
+- **RF06** (autenticación con roles) — parcialmente implementado: existen usuarios, roles, login (con BCrypt) y pantallas de Login/Crear usuario/Olvidé mi contraseña en el cliente. Falta: aplicar restricciones reales por rol en el backend (ver sección siguiente) y una pantalla de administración para resolver solicitudes de reseteo de contraseña.
 
 ## Estado del proyecto (seguridad)
 
-`SecurityConfig.java` actualmente permite todas las peticiones (`permitAll()`) de forma temporal, sin login ni roles. Esto está pendiente como tarea de Fase 2 del cronograma (autenticación real + roles Analista/Supervisor) y **no debe considerarse la configuración final**.
+`SecurityConfig.java` actualmente permite todas las peticiones (`permitAll()`) de forma temporal — el login y el registro de usuarios ya funcionan y validan credenciales correctamente, pero **ningún endpoint exige estar autenticado todavía**: cualquiera puede llamar a `/api/**` sin iniciar sesión. Esto está pendiente como tarea de Fase 2 del cronograma (exigir sesión real + restringir acciones por rol, ej. que solo un Supervisor pueda aprobar, solo un Administrador pueda resetear contraseñas) y **no debe considerarse la configuración final**.
 
-## 6. (Opcional) Usar la base de datos compartida en la nube (Aiven)
+## 7. (Opcional) Usar la base de datos compartida en la nube (Aiven)
 
 Además de la base local en Docker, el equipo tiene una base MySQL en la nube
 (Aiven) para compartir los mismos datos entre todos. El backend puede apuntar
@@ -242,7 +263,9 @@ Resumen:
    `The following profiles are active: aiven`.
 
 > - La base de Aiven ya tiene esquema y datos: **no correr** `01-schema.sql`
->   contra ella.
+>   contra ella. Si el esquema de Aiven es anterior a este cambio, recuerda
+>   aplicar ahí también el `ALTER TABLE usuarios ADD COLUMN requiere_reset_password ...`
+>   de la sección 2.
 > - Solo un backend a la vez (local o Aiven): comparten el puerto 8080.
 > - El plan gratuito de Aiven se suspende tras inactividad; la primera
 >   conexión puede tardar en "despertar".
