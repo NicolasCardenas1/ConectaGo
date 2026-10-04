@@ -12,3 +12,50 @@ Content-Type: application/json
   "observaciones": "Muestra de prueba",
   "idUsuarioRegistro": 1
 }
+
+
+### 1. Crear un análisis en el catálogo
+POST http://localhost:8080/api/analisis
+Content-Type: application/json
+
+{
+  "nombre": "Hemograma Completo",
+  "descripcion": "Conteo de células sanguíneas",
+  "unidadMedida": "cel/mm3",
+  "metodoReferencia": "Automatizado",
+  "tiempoEstimadoHrs": 2,
+  "valorMinNormal": 4.5,
+  "valorMaxNormal": 11.0
+}
+
+### 2. Asignar ese análisis a la muestra M-2026-0001 (id=1)
+POST http://localhost:8080/api/muestra-analisis
+Content-Type: application/json
+
+{
+  "idMuestra": 1,
+  "idAnalisis": 1
+}
+
+### 3. Ingresar el resultado (ajusta idMuestraAnalisis según lo que devuelva el paso 2)
+POST http://localhost:8080/api/resultados
+Content-Type: application/json
+
+{
+  "idMuestraAnalisis": 1,
+  "valorResultado": 7.2,
+  "instrumentoUtilizado": "Analizador XN-1000",
+  "idUsuarioIngreso": 1,
+  "observaciones": "Dentro de rango normal"
+}
+
+### 4. Aprobar el resultado (ajusta idResultado según lo que devuelva el paso 3)
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+
+{
+  "idResultado": 1,
+  "idSupervisor": 1,
+  "estadoAprobacion": "Aprobado",
+  "comentario": null
+}
