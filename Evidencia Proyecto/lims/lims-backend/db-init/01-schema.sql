@@ -81,6 +81,7 @@ CREATE TABLE usuarios (
     password_hash      VARCHAR(255) NOT NULL,       -- BCrypt (RNF03), NUNCA texto plano
     id_rol             INT NOT NULL,
     activo             BOOLEAN NOT NULL DEFAULT TRUE, -- baja lógica, no se borra (trazabilidad)
+    requiere_reset_password BOOLEAN NOT NULL DEFAULT FALSE,
     fecha_creacion     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     fecha_ultimo_login DATETIME NULL,
     CONSTRAINT fk_usuario_rol    FOREIGN KEY (id_rol) REFERENCES roles(id_rol),
