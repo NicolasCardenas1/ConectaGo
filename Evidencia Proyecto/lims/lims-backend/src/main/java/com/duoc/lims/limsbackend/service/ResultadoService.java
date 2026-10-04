@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 public class ResultadoService {
@@ -81,11 +82,19 @@ public class ResultadoService {
         return aDTO(guardado);
     }
 
+    @Transactional(readOnly = true)
+    public List<ResultadoResponseDTO> listar(boolean soloPendientes) {
+        List<Resultado> resultados = soloPendientes
+                ? resultadoRepository.findPendientesDeAprobacion()
+                : resultadoRepository.findAll();
+        return resultados.stream().map(this::aDTO).toList();
+    }
+
     private boolean estaDentroDeRango(BigDecimal valor, BigDecimal min, BigDecimal max) {
         return valor.compareTo(min) >= 0 && valor.compareTo(max) <= 0;
     }
 
-    private ResultadoResponseDTO aDTO(Resultado r) {
+    public ResultadoResponseDTO aDTO(Resultado r) {
         MuestraAnalisis ma = r.getMuestraAnalisis();
         AnalisisCatalogo analisis = ma.getAnalisis();
 

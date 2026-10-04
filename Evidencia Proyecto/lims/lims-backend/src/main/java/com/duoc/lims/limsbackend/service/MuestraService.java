@@ -11,7 +11,19 @@ import com.duoc.lims.limsbackend.repository.CentroRepository;
 import com.duoc.lims.limsbackend.repository.MuestraRepository;
 import com.duoc.lims.limsbackend.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+
 import org.springframework.transaction.annotation.Transactional;
+import com.duoc.lims.limsbackend.dto.AnalisisDeMuestraDTO;
+import com.duoc.lims.limsbackend.dto.MuestraDetalleDTO;
+import com.duoc.lims.limsbackend.dto.ResultadoResponseDTO;
+import com.duoc.lims.limsbackend.model.AnalisisCatalogo;
+import com.duoc.lims.limsbackend.model.Aprobacion;
+import com.duoc.lims.limsbackend.model.MuestraAnalisis;
+import com.duoc.lims.limsbackend.model.Resultado;
+import com.duoc.lims.limsbackend.repository.AprobacionRepository;
+import com.duoc.lims.limsbackend.repository.MuestraAnalisisRepository;
+import com.duoc.lims.limsbackend.repository.ResultadoRepository;
+import java.util.Optional;
 
 import java.time.Year;
 import java.util.List;
@@ -27,13 +39,25 @@ public class MuestraService {
     private final MuestraRepository muestraRepository;
     private final CentroRepository centroRepository;
     private final UsuarioRepository usuarioRepository;
+    private final MuestraAnalisisRepository muestraAnalisisRepository;
+    private final ResultadoRepository resultadoRepository;
+    private final AprobacionRepository aprobacionRepository;
+    private final ResultadoService resultadoService;
 
     public MuestraService(MuestraRepository muestraRepository,
                           CentroRepository centroRepository,
-                          UsuarioRepository usuarioRepository) {
+                          UsuarioRepository usuarioRepository,
+                          MuestraAnalisisRepository muestraAnalisisRepository,
+                          ResultadoRepository resultadoRepository,
+                          AprobacionRepository aprobacionRepository,
+                          ResultadoService resultadoService) {
         this.muestraRepository = muestraRepository;
         this.centroRepository = centroRepository;
         this.usuarioRepository = usuarioRepository;
+        this.muestraAnalisisRepository = muestraAnalisisRepository;
+        this.resultadoRepository = resultadoRepository;
+        this.aprobacionRepository = aprobacionRepository;
+        this.resultadoService = resultadoService;
     }
 
     @Transactional
@@ -63,6 +87,46 @@ public class MuestraService {
                 .stream()
                 .map(this::aDTO)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MuestraDetalleDTO obtenerDetalle(Integer id) {
+        Muestra muestra = muestraRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("No existe la muestra con id " + id));
+
+        List<AnalisisDeMuestraDTO> analisis = muestraAnalisisRepository.findByMuestra_Id(id)
+                .stream()
+                .map(this::analisisADTO)
+                .toList();
+
+        return new MuestraDetalleDTO(aDTO(muestra), analisis);
+    }
+
+    private AnalisisDeMuestraDTO analisisADTO(MuestraAnalisis ma) {
+        AnalisisCatalogo cat = ma.getAnalisis();
+        String analista = ma.getAnalistaAsignado() == null ? null
+                : ma.getAnalistaAsignado().getNombre() + " " + ma.getAnalistaAsignado().getApellido();
+
+        ResultadoResponseDTO resultadoDTO = null;
+        String estadoAprobacion = null;
+        String comentario = null;
+
+        Optional<Resultado> resultado = resultadoRepository.findByMuestraAnalisis_Id(ma.getId());
+        if (resultado.isPresent()) {
+            resultadoDTO = resultadoService.aDTO(resultado.get());
+            Optional<Aprobacion> ultima =
+                    aprobacionRepository.findTopByResultado_IdOrderByIdDesc(resultado.get().getId());
+            if (ultima.isPresent()) {
+                estadoAprobacion = ultima.get().getEstadoAprobacion().getValorDb();
+                comentario = ultima.get().getComentario();
+            }
+        }
+
+        return new AnalisisDeMuestraDTO(
+                ma.getId(), cat.getId(), cat.getNombre(), cat.getUnidadMedida(),
+                cat.getValorMinNormal(), cat.getValorMaxNormal(),
+                analista, ma.getEstado().getValorDb(),
+                resultadoDTO, estadoAprobacion, comentario);
     }
 
     private String generarCodigoUnico(Integer idCentro) {

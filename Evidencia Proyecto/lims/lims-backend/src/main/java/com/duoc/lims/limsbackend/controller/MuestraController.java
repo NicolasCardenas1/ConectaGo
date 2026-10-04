@@ -6,6 +6,7 @@ import com.duoc.lims.limsbackend.service.MuestraService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import com.duoc.lims.limsbackend.dto.MuestraDetalleDTO;
 
 import java.util.List;
 
@@ -34,5 +35,10 @@ public class MuestraController {
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String manejarArgumentoInvalido(IllegalArgumentException ex) {
         return ex.getMessage();
+    }
+
+    @GetMapping("/{id}")
+    public MuestraDetalleDTO obtenerDetalle(@PathVariable Integer id) {
+        return muestraService.obtenerDetalle(id);
     }
 }

@@ -6,6 +6,7 @@ import com.duoc.lims.limsbackend.service.ResultadoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/resultados")
@@ -23,6 +24,10 @@ public class ResultadoController {
         return resultadoService.ingresar(dto);
     }
 
+    @GetMapping
+    public List<ResultadoResponseDTO> listar(@RequestParam(defaultValue = "false") boolean pendientes) {
+        return resultadoService.listar(pendientes);
+    }
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public String manejarArgumentoInvalido(IllegalArgumentException ex) {
