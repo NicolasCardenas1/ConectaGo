@@ -196,4 +196,19 @@ public class ApiClient {
             throw new IOException(response.body());   // ej: "Un rechazo debe incluir un comentario..."
         }
     }
+
+    /** RF05: emite el informe PDF de una muestra aprobada y devuelve el archivo. */
+    public byte[] generarReporte(int idMuestra, int idUsuario) throws IOException, InterruptedException {
+        HttpRequest request = HttpRequest.newBuilder()
+                .uri(URI.create(BASE_URL + "/muestras/" + idMuestra + "/reporte?idUsuario=" + idUsuario))
+                .POST(HttpRequest.BodyPublishers.noBody())
+                .build();
+
+        HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200) {
+            // ej: "Solo se puede emitir el informe de una muestra Aprobada"
+            throw new IOException(new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return response.body();
+    }
 }

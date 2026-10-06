@@ -25,10 +25,19 @@ import java.util.List;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonBar;
+import javafx.scene.control.ButtonType;
+import javafx.stage.FileChooser;
 import javafx.stage.Modality;
 import javafx.stage.Stage;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
+import java.util.Optional;
 
 public class DetalleMuestraController {
 
@@ -44,6 +53,7 @@ public class DetalleMuestraController {
 
     @FXML private ComboBox<AnalisisCatalogo> cbAnalisis;
     @FXML private Button btnAgregar;
+    @FXML private Button btnReporte;
 
     @FXML private TableView<AnalisisItem> tablaAnalisis;
     @FXML private TableColumn<AnalisisItem, String> colAnalisis;
@@ -63,6 +73,7 @@ public class DetalleMuestraController {
 
     private final ApiClient apiClient = new ApiClient();
     private Integer idMuestra;
+    private String codigoMuestra;
 
     @FXML
     public void initialize() {
@@ -165,6 +176,76 @@ public class DetalleMuestraController {
             mostrarError("No se pudo abrir el diálogo: " + e.getMessage());
         }
     }
+    // ---------- RF05: informe PDF ----------
+
+    @FXML
+    private void onGenerarReporte() {
+        btnReporte.setDisable(true);
+        mostrarOk("Generando informe...");
+        int idUsuario = Navigator.getUsuarioActual().getId();
+
+        Thread hilo = new Thread(() -> {
+            try {
+                byte[] pdf = apiClient.generarReporte(idMuestra, idUsuario);
+                // Se guarda una copia temporal para la vista previa.
+                Path temporal = Files.createTempDirectory("lims-informe").resolve("Informe_" + codigoMuestra + ".pdf");
+                Files.write(temporal, pdf);
+                Platform.runLater(() -> {
+                    mostrarOk("Informe generado. La muestra quedó en estado Reportada.");
+                    preguntarQueHacerConInforme(temporal);
+                    cargarDetalle();   // refresca estado e historial
+                });
+            } catch (Exception e) {
+                Platform.runLater(() -> {
+                    mostrarError(e.getMessage());
+                    btnReporte.setDisable(false);
+                });
+            }
+        });
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    private void preguntarQueHacerConInforme(Path pdf) {
+        ButtonType verPrevia = new ButtonType("Ver vista previa", ButtonBar.ButtonData.OK_DONE);
+        ButtonType guardar = new ButtonType("Guardar como...", ButtonBar.ButtonData.OTHER);
+        ButtonType cerrar = new ButtonType("Cerrar", ButtonBar.ButtonData.CANCEL_CLOSE);
+
+        Alert dialogo = new Alert(Alert.AlertType.INFORMATION, "", verPrevia, guardar, cerrar);
+        dialogo.setTitle("LIMS - Informe de resultados");
+        dialogo.setHeaderText("Informe de la muestra " + codigoMuestra + " generado");
+        dialogo.setContentText("¿Qué deseas hacer con el informe PDF?");
+        dialogo.initOwner(btnReporte.getScene().getWindow());
+        dialogo.getDialogPane().getStylesheets().addAll(btnReporte.getScene().getStylesheets());
+
+        Optional<ButtonType> eleccion = dialogo.showAndWait();
+        if (eleccion.isEmpty() || eleccion.get() == cerrar) {
+            return;
+        }
+        if (eleccion.get() == verPrevia) {
+            Navigator.abrirDocumento(pdf);
+        } else if (eleccion.get() == guardar) {
+            guardarInforme(pdf);
+        }
+    }
+
+    private void guardarInforme(Path pdf) {
+        FileChooser selector = new FileChooser();
+        selector.setTitle("Guardar informe PDF");
+        selector.setInitialFileName(pdf.getFileName().toString());
+        selector.getExtensionFilters().add(new FileChooser.ExtensionFilter("Documento PDF", "*.pdf"));
+        File destino = selector.showSaveDialog(btnReporte.getScene().getWindow());
+        if (destino == null) {
+            return;
+        }
+        try {
+            Files.copy(pdf, destino.toPath(), StandardCopyOption.REPLACE_EXISTING);
+            mostrarOk("Informe guardado en " + destino.getAbsolutePath());
+        } catch (IOException e) {
+            mostrarError("No se pudo guardar el informe: " + e.getMessage());
+        }
+    }
+
     // ---------- carga de datos (en hilo aparte, igual que el listado) ----------
 
     private void cargarDetalle() {
@@ -198,6 +279,12 @@ public class DetalleMuestraController {
     private void mostrarDetalle(MuestraDetalle detalle) {
         Muestra m = detalle.muestra();
         lblTitulo.setText("Muestra " + m.getCodigoUnico());
+        codigoMuestra = m.getCodigoUnico();
+
+        // RF05: el informe solo se puede emitir para muestras Aprobadas (o re-emitir si ya está Reportada).
+        boolean puedeInformar = "Aprobada".equals(m.getEstado()) || "Reportada".equals(m.getEstado());
+        btnReporte.setDisable(!puedeInformar);
+        btnReporte.setText("Reportada".equals(m.getEstado()) ? "Re-emitir informe PDF" : "Generar informe PDF");
         lblTipo.setText(m.getTipoMuestra());
         lblEstadoMuestra.setText(Badges.textoVisible(m.getEstado()));
         lblEstadoMuestra.getStyleClass().setAll("label", "badge", Badges.claseColor(m.getEstado()));

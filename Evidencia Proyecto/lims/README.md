@@ -183,6 +183,7 @@ Al iniciar sesión, la ventana se agranda y aparece el **marco principal**: una 
 | **Detalle de muestra** | Doble clic o *Ver detalle* en el listado | Datos de la muestra; pestaña **Análisis solicitados** (asignar análisis del catálogo e ingresar resultados) y pestaña **Historial de estados** |
 | **Ingreso de resultado** (mockup 11.4) | Detalle → seleccionar análisis → *Ingresar resultado* | Diálogo que avisa **en vivo** si el valor está fuera de rango y exige observaciones (RF02/RF03). Acepta coma decimal (`7,2`) |
 | **Aprobación de resultados** (mockup 11.5) | Barra lateral → *Aprobaciones* | Tabla de resultados pendientes + panel de revisión con botones **Aprobar** / **Rechazar** (comentario obligatorio al rechazar) (RF04) |
+| **Informe PDF** (mockup 11.6) | Detalle de una muestra Aprobada → *Generar informe PDF* | Emite el informe y permite **ver la vista previa** (se abre en el visor de PDF del sistema) o **guardarlo como…** (RF05) |
 
 Las opciones *Análisis, Reportes, Usuarios y Configuración* de la barra lateral aparecen deshabilitadas ("próximamente").
 
@@ -202,6 +203,14 @@ El backend expone los siguientes módulos, todos bajo `http://localhost:8080`.
 - `GET  /api/muestras` — lista todas las muestras.
 - `GET  /api/muestras/{id}` — **detalle** de una muestra: sus datos, cada análisis solicitado con su resultado y su última aprobación, y el **historial de estados**.
 - `POST /api/muestras` — registra una muestra (genera código único automático y deja el primer registro del historial: *Recepción de la muestra*).
+
+### Informe de resultados en PDF (RF05)
+- `POST /api/muestras/{id}/reporte?idUsuario={id}` — emite el **informe PDF** de la muestra y lo devuelve (`application/pdf`).
+  - Solo para muestras **Aprobadas** (o ya *Reportadas*: se emite una nueva versión `-v2`, `-v3`…).
+  - Contenido: datos del laboratorio, N° de informe con versión y fecha, datos de la muestra, tabla de resultados (método, valor, unidad, rango, control *En rango / Fuera de rango*, analista y quién validó), observaciones, validación/emisión y nota de alcance tipo ISO 17025.
+  - Cada emisión queda registrada en la tabla `reportes` y el archivo se guarda en `lims-backend/reportes/` (configurable con la propiedad `lims.reportes.dir`; la carpeta está en el `.gitignore`).
+  - La muestra pasa a estado **Reportada** (queda en el historial).
+  - Librería: **OpenPDF 1.3.43** (`com.github.librepdf:openpdf`).
 
 ### Catálogo de análisis
 - `GET   /api/analisis` — lista los análisis del catálogo.
@@ -239,7 +248,7 @@ El backend expone los siguientes módulos, todos bajo `http://localhost:8080`.
 ### Flujo de estados de la muestra e historial (trazabilidad ISO 17025)
 
 ```
-Recibida ──(1er resultado)──► En analisis ──(todos con resultado)──► Resultados ingresados ──(todos aprobados)──► Aprobada
+Recibida ──(1er resultado)──► En analisis ──(todos con resultado)──► Resultados ingresados ──(todos aprobados)──► Aprobada ──(informe PDF)──► Reportada
                                                                                          └──(un rechazo)──────► Rechazada
 ```
 
@@ -296,18 +305,17 @@ El historial se consulta en `GET /api/muestras/{id}` y se ve en la pestaña *His
 | **RF02** Ingreso de resultados | ✅ | ✅ Asignación de análisis + diálogo de ingreso |
 | **RF03** Validación de rangos | ✅ | ✅ Aviso en vivo y observaciones obligatorias |
 | **RF04** Aprobación por supervisor | ✅ Con reglas de rol, segregación y evaluación única | ✅ Pantalla de Aprobaciones |
-| **RF05** Reporte PDF | ❌ Pendiente | ❌ Pendiente (mockup 11.6) |
+| **RF05** Reporte PDF | ✅ OpenPDF, versionado y registro en `reportes` | ✅ Generar, vista previa y guardar |
 | **RF06** Autenticación con roles | ⚠️ Login con BCrypt; faltan restricciones por rol en los endpoints | ⚠️ Barra lateral con usuario y cierre de sesión; falta mostrar opciones según el rol |
 
 Además: historial de estados de la muestra (ISO 17025) ✅.
 
 ### Próximos pasos
 
-1. **RF05** — generación del reporte PDF en el backend + vista previa/descarga en el cliente.
-2. **RF06** — seguridad real en `SecurityConfig` (exigir sesión y restringir por rol) y barra lateral según el rol del usuario.
-3. Definir el flujo después de un **rechazo** (reingreso o corrección del resultado).
-4. Quitar el selector de rol de la pantalla pública "Crear usuario" (hoy cualquiera puede registrarse como Administrador).
-5. Pruebas JUnit de los servicios, instalador (`.exe`/`.jar`) y actualización del informe técnico.
+1. **RF06** — seguridad real en `SecurityConfig` (exigir sesión y restringir por rol) y barra lateral según el rol del usuario.
+2. Definir el flujo después de un **rechazo** (reingreso o corrección del resultado).
+3. Quitar el selector de rol de la pantalla pública "Crear usuario" (hoy cualquiera puede registrarse como Administrador).
+4. Pruebas JUnit de los servicios, instalador (`.exe`/`.jar`) y actualización del informe técnico.
 
 ## Estado del proyecto (seguridad)
 

@@ -33,3 +33,6 @@ build/
 .vscode/
 
 application-aiven.properties
+
+### Informes PDF generados por el backend (RF05) ###
+reportes/

@@ -13,6 +13,9 @@
             <Label fx:id="lblTitulo" text="Detalle de muestra" styleClass="page-title"/>
             <Label text="Datos de recepción, análisis solicitados y resultados" styleClass="page-subtitle"/>
         </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="btnReporte" text="Generar informe PDF" styleClass="btn-primary"
+                onAction="#onGenerarReporte" disable="true"/>
     </HBox>
 
     <!-- Tarjeta con los datos de la muestra -->

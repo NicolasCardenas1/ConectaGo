@@ -156,3 +156,20 @@ GET http://localhost:8080/api/resultados?pendientes=true
 
 ### 11. Listar muestras
 GET http://localhost:8080/api/muestras
+
+### ------------------------------------------------------------
+### RF05 — INFORME PDF
+### ------------------------------------------------------------
+
+### 12a. Intentar el informe de una muestra NO aprobada -> DEBE FALLAR (400)
+###      (crea antes otra muestra o usa una que no esté Aprobada)
+POST http://localhost:8080/api/muestras/2/reporte?idUsuario=1
+
+### 12b. Emitir el informe de la muestra 1 (Aprobada) -> PDF; la muestra pasa a "Reportada"
+###      El archivo queda guardado en lims-backend/reportes/ y también aquí:
+POST http://localhost:8080/api/muestras/1/reporte?idUsuario=1
+
+>> informe-prueba.pdf
+
+### 12c. Re-emitir -> versión 2 (Informe_M-2026-0001-v2.pdf), el historial no se duplica
+POST http://localhost:8080/api/muestras/1/reporte?idUsuario=1

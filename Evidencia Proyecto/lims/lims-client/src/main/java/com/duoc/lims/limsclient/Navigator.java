@@ -3,11 +3,13 @@ package com.duoc.lims.limsclient;
 import com.duoc.lims.limsclient.controller.DetalleMuestraController;
 import com.duoc.lims.limsclient.controller.MainLayoutController;
 import com.duoc.lims.limsclient.model.UsuarioResponse;
+import javafx.application.HostServices;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
 import javafx.stage.Stage;
 
 import java.io.IOException;
+import java.nio.file.Path;
 
 /**
  * Navegación de la app.
@@ -19,9 +21,19 @@ public class Navigator {
     private static Stage stage;
     private static UsuarioResponse usuarioActual;
     private static MainLayoutController marco;   // null mientras no se haya iniciado sesión
+    private static HostServices hostServices;
 
     public static void setStage(Stage primaryStage) {
         stage = primaryStage;
+    }
+
+    public static void setHostServices(HostServices servicios) {
+        hostServices = servicios;
+    }
+
+    /** Abre un archivo (ej. un PDF) con el programa predeterminado del sistema operativo. */
+    public static void abrirDocumento(Path archivo) {
+        hostServices.showDocument(archivo.toUri().toString());
     }
 
     public static void setUsuarioActual(UsuarioResponse usuario) {
