@@ -11,7 +11,7 @@ public class AprobacionRequestDTO {
     @NotNull(message = "idResultado es obligatorio")
     private Integer idResultado;
 
-    @NotNull(message = "idSupervisor es obligatorio")
+    // RF06: lo completa el backend con el usuario de la sesión (el valor que envíe el cliente se ignora).
     private Integer idSupervisor;
 
     // "Aprobado" o "Rechazado"

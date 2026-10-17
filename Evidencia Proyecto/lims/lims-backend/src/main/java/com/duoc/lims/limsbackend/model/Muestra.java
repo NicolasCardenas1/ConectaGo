@@ -47,6 +47,11 @@ public class Muestra {
     @JoinColumn(name = "id_usuario_registro", nullable = false)
     private Usuario usuarioRegistro;
 
+    // v4: investigador que encarga el muestreo (null en muestras anteriores a v4)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_investigador")
+    private Investigador investigador;
+
     @Column(name = "fecha_toma")
     private LocalDateTime fechaToma;
 

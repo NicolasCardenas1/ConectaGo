@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import com.duoc.lims.limsclient.Navigator;
 import com.duoc.lims.limsclient.model.LoginRequest;
-import com.duoc.lims.limsclient.model.UsuarioResponse;
+import com.duoc.lims.limsclient.model.LoginResponse;
 import com.duoc.lims.limsclient.service.ApiClient;
 
 import javafx.fxml.FXML;
@@ -21,6 +21,14 @@ public class LoginController {
     private final ApiClient apiClient = new ApiClient();
 
     @FXML
+    private void initialize() {
+        String mensaje = Navigator.tomarMensajeParaLogin();   // ej. "Tu sesión expiró..."
+        if (mensaje != null) {
+            mostrarError(mensaje);
+        }
+    }
+
+    @FXML
     private void onIniciarSesion() {
         String username = usernameField.getText() == null ? "" : usernameField.getText().trim();
         String password = passwordField.getText() == null ? "" : passwordField.getText();
@@ -32,8 +40,8 @@ public class LoginController {
 
         try {
             LoginRequest request = new LoginRequest(username, password);
-            UsuarioResponse usuario = apiClient.login(request);
-            Navigator.setUsuarioActual(usuario);
+            LoginResponse sesion = apiClient.login(request);   // guarda el token de sesión
+            Navigator.setUsuarioActual(sesion.usuario());
             Navigator.irAListado();
         } catch (IOException e) {
             mostrarError(e.getMessage());

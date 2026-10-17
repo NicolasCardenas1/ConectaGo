@@ -2,10 +2,14 @@ package com.duoc.lims.limsclient.model;
 
 import java.math.BigDecimal;
 
+/** Parámetro del catálogo con su rango normal (GET /api/analisis). */
 public record AnalisisCatalogo(
         Integer id,
         String nombre,
+        String descripcion,
         String unidadMedida,
+        String metodoReferencia,
+        BigDecimal tiempoEstimadoHrs,
         BigDecimal valorMinNormal,
         BigDecimal valorMaxNormal,
         Boolean activo) {

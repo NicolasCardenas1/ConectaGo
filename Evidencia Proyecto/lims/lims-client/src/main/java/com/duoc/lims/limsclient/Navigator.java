@@ -3,6 +3,7 @@ package com.duoc.lims.limsclient;
 import com.duoc.lims.limsclient.controller.DetalleMuestraController;
 import com.duoc.lims.limsclient.controller.MainLayoutController;
 import com.duoc.lims.limsclient.model.UsuarioResponse;
+import com.duoc.lims.limsclient.service.ApiClient;
 import javafx.application.HostServices;
 import javafx.fxml.FXMLLoader;
 import javafx.scene.Parent;
@@ -46,10 +47,52 @@ public class Navigator {
 
     // ---------- Pantallas a ventana completa (sin barra lateral) ----------
 
+    /** Mensaje que el login muestra al abrirse (ej. "tu sesión expiró"). Se consume una sola vez. */
+    private static String mensajeParaLogin;
+
     public static void irALogin() {
         usuarioActual = null;
         marco = null;
+        ApiClient.olvidarSesion();
         cambiarVentanaCompleta("login-view.fxml", "LIMS - Inicio de Sesión");
+    }
+
+    /** Lo llama ApiClient cuando el backend responde 401 (token vencido o inválido). */
+    public static void irALoginPorSesionExpirada() {
+        if (usuarioActual == null) {
+            return;   // ya estamos en el login
+        }
+        mensajeParaLogin = "Tu sesión expiró. Inicia sesión nuevamente.";
+        irALogin();
+    }
+
+    public static String tomarMensajeParaLogin() {
+        String m = mensajeParaLogin;
+        mensajeParaLogin = null;
+        return m;
+    }
+
+    // ---------- Permisos por rol (RF06) ----------
+
+    public static boolean esRol(String... roles) {
+        if (usuarioActual == null || usuarioActual.getNombreRol() == null) {
+            return false;
+        }
+        for (String r : roles) {
+            if (r.equalsIgnoreCase(usuarioActual.getNombreRol())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** Supervisor o Administrador: pueden aprobar resultados y emitir informes. */
+    public static boolean puedeAprobar() {
+        return esRol("Supervisor", "Administrador");
+    }
+
+    public static boolean esAdministrador() {
+        return esRol("Administrador");
     }
 
     public static void irACrearUsuario() {
@@ -68,6 +111,18 @@ public class Navigator {
 
     public static void irARegistroMuestra() {
         mostrarEnMarco("registro-muestra.fxml", "Registrar Nueva Muestra", "muestras");
+    }
+
+    public static void irAInvestigadores() {
+        mostrarEnMarco("investigadores.fxml", "Investigadores", "investigadores");
+    }
+
+    public static void irACatalogo() {
+        mostrarEnMarco("catalogo.fxml", "Parámetros y rangos", "catalogo");
+    }
+
+    public static void irAUsuarios() {
+        mostrarEnMarco("usuarios.fxml", "Administración de Usuarios", "usuarios");
     }
 
     public static void irAAprobaciones() {

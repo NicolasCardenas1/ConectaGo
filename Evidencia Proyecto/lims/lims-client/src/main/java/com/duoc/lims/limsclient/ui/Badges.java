@@ -29,7 +29,11 @@ public final class Badges {
             case "En analisis", "En proceso", "Resultados ingresados", "Completado" -> "badge-azul";
             case "Aprobada", "Aprobado", "En rango" -> "badge-verde";
             case "Rechazada", "Rechazado", "Fuera de rango" -> "badge-rojo";
-            case "Reportada" -> "badge-morado";
+            case "Reportada", "Administrador" -> "badge-morado";
+            case "Activo" -> "badge-verde";
+            case "Inactivo", "Analista" -> "badge-gris";
+            case "Reset solicitado" -> "badge-amarillo";
+            case "Supervisor" -> "badge-azul";
             default -> "badge-gris";
         };
     }

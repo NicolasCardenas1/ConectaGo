@@ -28,7 +28,8 @@ public class ListadoMuestrasController {
     @FXML private TableView<Muestra> tablaMuestras;
     @FXML private TableColumn<Muestra, String> colCodigo;
     @FXML private TableColumn<Muestra, String> colTipo;
-    @FXML private TableColumn<Muestra, String> colCliente;
+    @FXML private TableColumn<Muestra, String> colCliente;   // investigador
+    @FXML private TableColumn<Muestra, String> colSitio;
     @FXML private TableColumn<Muestra, String> colPrioridad;
     @FXML private TableColumn<Muestra, String> colEstado;
     @FXML private TableColumn<Muestra, String> colFecha;
@@ -49,7 +50,9 @@ public class ListadoMuestrasController {
     public void initialize() {
         colCodigo.setCellValueFactory(new PropertyValueFactory<>("codigoUnico"));
         colTipo.setCellValueFactory(new PropertyValueFactory<>("tipoMuestra"));
-        colCliente.setCellValueFactory(new PropertyValueFactory<>("procedencia"));
+        colCliente.setCellValueFactory(d -> new SimpleStringProperty(
+                d.getValue().getInvestigador() == null ? "—" : d.getValue().getInvestigador()));
+        colSitio.setCellValueFactory(new PropertyValueFactory<>("procedencia"));
         colPrioridad.setCellValueFactory(new PropertyValueFactory<>("prioridad"));
         colEstado.setCellValueFactory(new PropertyValueFactory<>("estado"));
         colEstado.setCellFactory(c -> Badges.celda());   // estado como etiqueta de color
@@ -118,6 +121,7 @@ public class ListadoMuestrasController {
         filtradas.setPredicate(m -> buscado.isEmpty()
                 || contiene(m.getCodigoUnico(), buscado)
                 || contiene(m.getProcedencia(), buscado)
+                || contiene(m.getInvestigador(), buscado)
                 || contiene(m.getTipoMuestra(), buscado));
     }
 

@@ -5,7 +5,6 @@ import com.duoc.lims.limsclient.model.UsuarioRequest;
 import com.duoc.lims.limsclient.service.ApiClient;
 
 import javafx.fxml.FXML;
-import javafx.scene.control.ComboBox;
 import javafx.scene.control.Label;
 import javafx.scene.control.PasswordField;
 import javafx.scene.control.TextField;
@@ -18,19 +17,13 @@ public class CrearUsuarioController {
     @FXML private TextField usernameField;
     @FXML private PasswordField passwordField;
     @FXML private PasswordField confirmarPasswordField;
-    @FXML private ComboBox<String> rolComboBox;
     @FXML private Label errorLabel;
     @FXML private Label successLabel;
 
     private static final int ID_CENTRO_UNICO = 1; // Laboratorio Central (único centro del MVP)
+    private static final int ID_ROL_ANALISTA = 3;
 
     private final ApiClient apiClient = new ApiClient();
-
-    @FXML
-    private void initialize() {
-        rolComboBox.getItems().addAll("Administrador", "Supervisor", "Analista");
-        rolComboBox.getSelectionModel().select("Analista");
-    }
 
     @FXML
     private void onCrearCuenta() {
@@ -42,7 +35,6 @@ public class CrearUsuarioController {
         String username = textoDe(usernameField);
         String password = passwordField.getText() == null ? "" : passwordField.getText();
         String confirmar = confirmarPasswordField.getText() == null ? "" : confirmarPasswordField.getText();
-        String rolSeleccionado = rolComboBox.getValue();
 
         if (nombre.isEmpty() || apellido.isEmpty() || email.isEmpty() || username.isEmpty() || password.isEmpty()) {
             mostrarError("Completa todos los campos.");
@@ -52,16 +44,12 @@ public class CrearUsuarioController {
             mostrarError("Las contraseñas no coinciden.");
             return;
         }
-        if (rolSeleccionado == null) {
-            mostrarError("Selecciona un rol.");
-            return;
-        }
-
-        Integer idRol = idRolDe(rolSeleccionado);
+        // RF06: el registro público siempre crea Analistas (el backend lo impone de todas formas).
+        Integer idRol = ID_ROL_ANALISTA;
 
         try {
             UsuarioRequest request = new UsuarioRequest(ID_CENTRO_UNICO, nombre, apellido, email, username, password, idRol);
-            apiClient.crearUsuario(request);
+            apiClient.registrarse(request);
             successLabel.setText("Cuenta creada correctamente. Ya puedes iniciar sesión.");
             successLabel.setVisible(true);
             successLabel.setManaged(true);
@@ -73,14 +61,6 @@ public class CrearUsuarioController {
     @FXML
     private void onVolver() {
         Navigator.irALogin();
-    }
-
-    private Integer idRolDe(String nombreRol) {
-        return switch (nombreRol) {
-            case "Administrador" -> 1;
-            case "Supervisor" -> 2;
-            default -> 3; // Analista
-        };
     }
 
     private String textoDe(TextField field) {

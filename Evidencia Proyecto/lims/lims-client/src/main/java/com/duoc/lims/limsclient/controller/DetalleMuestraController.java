@@ -6,6 +6,14 @@ import com.duoc.lims.limsclient.model.Muestra;
 import com.duoc.lims.limsclient.model.MuestraDetalle;
 import com.duoc.lims.limsclient.model.MuestraDetalle.AnalisisItem;
 import com.duoc.lims.limsclient.model.MuestraDetalle.HistorialItem;
+import com.duoc.lims.limsclient.model.MuestraDetalle.CustodiaItem;
+import com.duoc.lims.limsclient.model.CustodiaRequest;
+import com.duoc.lims.limsclient.ui.Formularios;
+import javafx.event.ActionEvent;
+import javafx.scene.control.CheckBox;
+import javafx.scene.control.Dialog;
+import javafx.scene.control.TextField;
+import javafx.scene.layout.GridPane;
 import com.duoc.lims.limsclient.service.ApiClient;
 import com.duoc.lims.limsclient.ui.Badges;
 import javafx.application.Platform;
@@ -49,6 +57,25 @@ public class DetalleMuestraController {
     @FXML private Label lblFecha;
     @FXML private Label lblRegistradoPor;
     @FXML private Label lblObservaciones;
+    @FXML private Label lblInvestigador;
+    @FXML private Label lblFechaToma;
+    @FXML private Label lblUbicacion;
+    @FXML private Label lblCondicion;
+    @FXML private Label lblVencimiento;
+
+    @FXML private TableView<CustodiaItem> tablaCustodia;
+    @FXML private TableColumn<CustodiaItem, String> colCusFecha;
+    @FXML private TableColumn<CustodiaItem, String> colCusEvento;
+    @FXML private TableColumn<CustodiaItem, String> colCusEntrega;
+    @FXML private TableColumn<CustodiaItem, String> colCusRecibe;
+    @FXML private TableColumn<CustodiaItem, String> colCusUbicacion;
+    @FXML private TableColumn<CustodiaItem, String> colCusCondicion;
+
+    /** Eventos de custodia (deben coincidir con TipoEventoCustodia del backend). */
+    private static final List<String> EVENTOS_CUSTODIA = List.of(
+            "Recepción en laboratorio", "Traslado", "Retiro para análisis",
+            "Devolución a almacenamiento", "Devolución al investigador");
+    private String investigadorActual;
     @FXML private Label lblMensaje;
 
     @FXML private ComboBox<AnalisisCatalogo> cbAnalisis;
@@ -87,6 +114,15 @@ public class DetalleMuestraController {
         colResultado.setCellValueFactory(d -> texto(textoResultado(d.getValue())));
         colAprobacion.setCellValueFactory(d -> texto(textoAprobacion(d.getValue())));
         colAprobacion.setCellFactory(c -> Badges.celda());
+
+        // Cadena de custodia
+        colCusFecha.setCellValueFactory(d -> texto(d.getValue().fechaHora() != null
+                ? d.getValue().fechaHora().format(FORMATO_FECHA) : null));
+        colCusEvento.setCellValueFactory(d -> texto(d.getValue().tipoEvento()));
+        colCusEntrega.setCellValueFactory(d -> texto(d.getValue().entregadoPor()));
+        colCusRecibe.setCellValueFactory(d -> texto(d.getValue().recibidoPor() + "  ✔"));
+        colCusUbicacion.setCellValueFactory(d -> texto(d.getValue().ubicacion()));
+        colCusCondicion.setCellValueFactory(d -> texto(d.getValue().condicion()));
 
         // Historial de estados
         colHistFecha.setCellValueFactory(d -> texto(d.getValue().fecha() != null
@@ -176,17 +212,79 @@ public class DetalleMuestraController {
             mostrarError("No se pudo abrir el diálogo: " + e.getMessage());
         }
     }
+    // ---------- Cadena de custodia ----------
+
+    @FXML
+    private void onFirmarCustodia() {
+        javafx.scene.control.ComboBox<String> tipo =
+                new javafx.scene.control.ComboBox<>(FXCollections.observableArrayList(EVENTOS_CUSTODIA));
+        tipo.setValue("Traslado");
+        tipo.setMaxWidth(Double.MAX_VALUE);
+        TextField entregadoPor = new TextField();
+        TextField ubicacion = new TextField();
+        TextField condicion = new TextField();
+        TextField observaciones = new TextField();
+        entregadoPor.setPromptText("Quién entrega físicamente la muestra");
+        ubicacion.setPromptText("Dónde queda la muestra (ej: Congelador -80 °C, rack A)");
+        if (investigadorActual != null) {
+            entregadoPor.setText(investigadorActual);
+        }
+        CheckBox firma = new CheckBox("Confirmo que recibí la muestra (firma con fecha y hora)");
+        Label error = Formularios.lblError();
+        GridPane form = Formularios.grilla("Evento *", tipo, "Entregado por *", entregadoPor,
+                "Ubicación", ubicacion, "Condición", condicion, "Observaciones", observaciones);
+        form.add(firma, 0, 5, 2, 1);
+        form.add(error, 0, 6, 2, 1);
+
+        javafx.scene.control.ButtonType firmar = Formularios.boton("Firmar");
+        Dialog<javafx.scene.control.ButtonType> d = Formularios.dialogo(btnReporte.getScene().getWindow(),
+                btnReporte.getScene().getStylesheets(), "Cadena de custodia",
+                "Muestra " + codigoMuestra + " — recibe: " + Navigator.getUsuarioActual().getNombre() + " "
+                        + Navigator.getUsuarioActual().getApellido(), form, firmar);
+        d.getDialogPane().lookupButton(firmar).addEventFilter(ActionEvent.ACTION, ev -> {
+            if (Formularios.vacio(entregadoPor)) {
+                error.setText("Indica quién entrega la muestra.");
+                ev.consume();
+            } else if (!firma.isSelected()) {
+                error.setText("Debes confirmar la recepción para firmar.");
+                ev.consume();
+            }
+        });
+        Optional<javafx.scene.control.ButtonType> r = d.showAndWait();
+        if (r.isEmpty() || r.get() != firmar) {
+            return;
+        }
+        CustodiaRequest datos = new CustodiaRequest(tipo.getValue(), Formularios.texto(entregadoPor),
+                Formularios.texto(ubicacion), Formularios.texto(condicion), true, Formularios.texto(observaciones));
+        Thread hilo = new Thread(() -> {
+            try {
+                apiClient.registrarCustodia(idMuestra, datos);
+                Platform.runLater(() -> {
+                    mostrarOk("Evento de custodia firmado: " + datos.tipoEvento());
+                    cargarDetalle();
+                });
+            } catch (Exception ex) {
+                Platform.runLater(() -> mostrarError(ex.getMessage()));
+            }
+        });
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    private String vacioGuion(String s) {
+        return s == null || s.isBlank() ? "—" : s;
+    }
+
     // ---------- RF05: informe PDF ----------
 
     @FXML
     private void onGenerarReporte() {
         btnReporte.setDisable(true);
         mostrarOk("Generando informe...");
-        int idUsuario = Navigator.getUsuarioActual().getId();
 
         Thread hilo = new Thread(() -> {
             try {
-                byte[] pdf = apiClient.generarReporte(idMuestra, idUsuario);
+                byte[] pdf = apiClient.generarReporte(idMuestra);
                 // Se guarda una copia temporal para la vista previa.
                 Path temporal = Files.createTempDirectory("lims-informe").resolve("Informe_" + codigoMuestra + ".pdf");
                 Files.write(temporal, pdf);
@@ -282,13 +380,22 @@ public class DetalleMuestraController {
         codigoMuestra = m.getCodigoUnico();
 
         // RF05: el informe solo se puede emitir para muestras Aprobadas (o re-emitir si ya está Reportada).
-        boolean puedeInformar = "Aprobada".equals(m.getEstado()) || "Reportada".equals(m.getEstado());
+        boolean puedeInformar = Navigator.puedeAprobar()     // RF06: solo Supervisor/Administrador
+                && ("Aprobada".equals(m.getEstado()) || "Reportada".equals(m.getEstado()));
         btnReporte.setDisable(!puedeInformar);
         btnReporte.setText("Reportada".equals(m.getEstado()) ? "Re-emitir informe PDF" : "Generar informe PDF");
         lblTipo.setText(m.getTipoMuestra());
         lblEstadoMuestra.setText(Badges.textoVisible(m.getEstado()));
         lblEstadoMuestra.getStyleClass().setAll("label", "badge", Badges.claseColor(m.getEstado()));
         lblCliente.setText(m.getProcedencia());
+        investigadorActual = m.getInvestigador();
+        lblInvestigador.setText(m.getInvestigador() == null ? "— (muestra anterior a v4)"
+                : m.getInvestigador() + (m.getInstitucion() == null ? "" : " · " + m.getInstitucion()));
+        lblFechaToma.setText(m.getFechaToma() != null ? m.getFechaToma().format(FORMATO_FECHA) : "—");
+        lblUbicacion.setText(vacioGuion(m.getUbicacionAlmacenamiento()));
+        lblCondicion.setText(vacioGuion(m.getCondicionRecepcion()));
+        lblVencimiento.setText(m.getFechaVencimiento() != null
+                ? m.getFechaVencimiento().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) : "—");
         lblPrioridad.setText(m.getPrioridad());
         lblFecha.setText(m.getFechaRecepcion() != null ? m.getFechaRecepcion().format(FORMATO_FECHA) : "—");
         lblRegistradoPor.setText(m.getUsuarioRegistro());
@@ -296,6 +403,8 @@ public class DetalleMuestraController {
                 ? "—" : m.getObservaciones());
 
         tablaAnalisis.setItems(FXCollections.observableArrayList(detalle.analisis()));
+        tablaCustodia.setItems(FXCollections.observableArrayList(
+                detalle.custodia() == null ? List.of() : detalle.custodia()));
         tablaHistorial.setItems(FXCollections.observableArrayList(
                 detalle.historial() == null ? List.of() : detalle.historial()));
     }

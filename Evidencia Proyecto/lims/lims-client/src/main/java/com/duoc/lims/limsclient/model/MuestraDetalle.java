@@ -5,7 +5,20 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /** Respuesta de GET /api/muestras/{id}: la muestra con sus análisis, resultados y aprobación. */
-public record MuestraDetalle(Muestra muestra, List<AnalisisItem> analisis, List<HistorialItem> historial) {
+public record MuestraDetalle(Muestra muestra, List<AnalisisItem> analisis, List<HistorialItem> historial,
+                             List<CustodiaItem> custodia) {
+
+    /** Evento de la cadena de custodia (firmado por quien recibe). */
+    public record CustodiaItem(
+            Integer id,
+            String tipoEvento,
+            String entregadoPor,
+            String recibidoPor,
+            String ubicacion,
+            String condicion,
+            LocalDateTime fechaHora,
+            String observaciones) {}
+
 
     public record AnalisisItem(
             Integer idMuestraAnalisis,

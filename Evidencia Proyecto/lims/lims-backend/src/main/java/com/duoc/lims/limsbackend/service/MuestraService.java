@@ -15,6 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.duoc.lims.limsbackend.dto.AnalisisDeMuestraDTO;
 import com.duoc.lims.limsbackend.dto.HistorialEstadoDTO;
+import com.duoc.lims.limsbackend.dto.CustodiaEventoDTO;
+import com.duoc.lims.limsbackend.model.Investigador;
+import com.duoc.lims.limsbackend.model.enums.TipoEventoCustodia;
+import com.duoc.lims.limsbackend.repository.InvestigadorRepository;
 import com.duoc.lims.limsbackend.model.MuestraHistorialEstado;
 import com.duoc.lims.limsbackend.repository.MuestraHistorialEstadoRepository;
 import com.duoc.lims.limsbackend.dto.MuestraDetalleDTO;
@@ -48,6 +52,8 @@ public class MuestraService {
     private final ResultadoService resultadoService;
     private final EstadoMuestraService estadoMuestraService;
     private final MuestraHistorialEstadoRepository historialRepository;
+    private final InvestigadorRepository investigadorRepository;
+    private final CustodiaService custodiaService;
 
     public MuestraService(MuestraRepository muestraRepository,
                           CentroRepository centroRepository,
@@ -57,7 +63,9 @@ public class MuestraService {
                           AprobacionRepository aprobacionRepository,
                           ResultadoService resultadoService,
                           EstadoMuestraService estadoMuestraService,
-                          MuestraHistorialEstadoRepository historialRepository) {
+                          MuestraHistorialEstadoRepository historialRepository,
+                          InvestigadorRepository investigadorRepository,
+                          CustodiaService custodiaService) {
         this.muestraRepository = muestraRepository;
         this.centroRepository = centroRepository;
         this.usuarioRepository = usuarioRepository;
@@ -67,6 +75,8 @@ public class MuestraService {
         this.resultadoService = resultadoService;
         this.estadoMuestraService = estadoMuestraService;
         this.historialRepository = historialRepository;
+        this.investigadorRepository = investigadorRepository;
+        this.custodiaService = custodiaService;
     }
 
     @Transactional
@@ -78,8 +88,24 @@ public class MuestraService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "No existe el usuario con id " + dto.getIdUsuarioRegistro()));
 
+        Investigador investigador = investigadorRepository.findById(dto.getIdInvestigador())
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No existe el investigador con id " + dto.getIdInvestigador()));
+        if (!investigador.isActivo()) {
+            throw new IllegalArgumentException("El investigador " + investigador.getNombreCompleto() + " está inactivo");
+        }
+        if (dto.getFechaToma() != null && dto.getFechaVencimiento() != null
+                && dto.getFechaVencimiento().isBefore(dto.getFechaToma().toLocalDate())) {
+            throw new IllegalArgumentException("La fecha 'conservar hasta' no puede ser anterior a la fecha de toma");
+        }
+
         Muestra muestra = new Muestra();
         muestra.setCentro(centro);
+        muestra.setInvestigador(investigador);
+        muestra.setFechaToma(dto.getFechaToma());
+        muestra.setCondicionRecepcion(vacioANull(dto.getCondicionRecepcion()));
+        muestra.setUbicacionAlmacenamiento(vacioANull(dto.getUbicacionAlmacenamiento()));
+        muestra.setFechaVencimiento(dto.getFechaVencimiento());
         muestra.setCodigoUnico(generarCodigoUnico(centro.getId()));
         muestra.setTipoMuestra(TipoMuestra.fromValorDb(dto.getTipoMuestra()));
         muestra.setProcedencia(dto.getProcedencia());
@@ -89,6 +115,15 @@ public class MuestraService {
 
         Muestra guardada = muestraRepository.save(muestra);
         estadoMuestraService.registrarRecepcion(guardada, usuario);   // primer registro del historial
+
+        // Firma de recepción: primer evento de la cadena de custodia.
+        if (Boolean.TRUE.equals(dto.getFirmaRecepcion())) {
+            String entrega = dto.getEntregadaPor() == null || dto.getEntregadaPor().isBlank()
+                    ? investigador.getNombreCompleto()
+                    : dto.getEntregadaPor();
+            custodiaService.registrar(guardada, TipoEventoCustodia.RECEPCION, entrega, usuario,
+                    dto.getUbicacionAlmacenamiento(), dto.getCondicionRecepcion(), "Firma al registrar la muestra");
+        }
         return aDTO(guardada);
     }
 
@@ -114,7 +149,9 @@ public class MuestraService {
                 .map(this::historialADTO)
                 .toList();
 
-        return new MuestraDetalleDTO(aDTO(muestra), analisis, historial);
+        List<CustodiaEventoDTO> custodia = custodiaService.listar(id);
+
+        return new MuestraDetalleDTO(aDTO(muestra), analisis, historial, custodia);
     }
 
     private AnalisisDeMuestraDTO analisisADTO(MuestraAnalisis ma) {
@@ -160,8 +197,19 @@ public class MuestraService {
                 m.getEstado().getValorDb(),
                 m.getFechaRecepcion(),
                 m.getUsuarioRegistro().getNombre() + " " + m.getUsuarioRegistro().getApellido(),
-                m.getObservaciones()
+                m.getObservaciones(),
+                m.getInvestigador() == null ? null : m.getInvestigador().getId(),
+                m.getInvestigador() == null ? null : m.getInvestigador().getNombreCompleto(),
+                m.getInvestigador() == null ? null : m.getInvestigador().getInstitucion(),
+                m.getFechaToma(),
+                m.getCondicionRecepcion(),
+                m.getUbicacionAlmacenamiento(),
+                m.getFechaVencimiento()
         );
+    }
+
+    private String vacioANull(String s) {
+        return s == null || s.isBlank() ? null : s.trim();
     }
 
     private HistorialEstadoDTO historialADTO(MuestraHistorialEstado h) {

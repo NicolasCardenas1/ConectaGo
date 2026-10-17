@@ -1,175 +1,219 @@
-### ============================================================
-### FLUJO COMPLETO (BD nueva: docker-compose down -v / up -d)
-### ============================================================
+### ==================================================================
+### LIMS — pruebas de la API con seguridad por rol (RF06)
+### Ejecutar en orden sobre una BD NUEVA (docker-compose down -v / up -d).
+### Al arrancar con la BD vacía, el backend crea el usuario  admin / admin123  (id 1).
+### Los tokens se guardan solos en variables ({{tokenAdmin}}, {{tokenSup}}, {{tokenAna}}).
+### ==================================================================
 
-### 0a. Crear SUPERVISOR (sera el id 1)
-POST http://localhost:8080/api/usuarios
+### 0. Login del ADMINISTRADOR inicial -> guarda el token
+POST http://localhost:8080/api/usuarios/login
 Content-Type: application/json
 
-{
-  "idCentro": 1,
-  "nombre": "Cristian",
-  "apellido": "Solis",
-  "email": "cristian@lims.cl",
-  "username": "cristian",
-  "password": "1234",
-  "idRol": 2
-}
+{ "username": "admin", "password": "admin123" }
 
-### 0b. Crear ANALISTA (sera el id 2)
+> {% client.global.set("tokenAdmin", response.body.token); %}
+
+### 1a. El admin crea un SUPERVISOR (id 2)
 POST http://localhost:8080/api/usuarios
 Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
 
-{
-  "idCentro": 1,
-  "nombre": "Ana",
-  "apellido": "Analista",
-  "email": "ana@lims.cl",
-  "username": "ana",
-  "password": "1234",
-  "idRol": 3
-}
+{ "idCentro": 1, "nombre": "Cristian", "apellido": "Solis", "email": "cristian@lims.cl",
+  "username": "cristian", "password": "1234", "idRol": 2 }
 
-### 1. Crear muestra (id 1) -> historial: "Recepción de la muestra"
+### 1b. Registro PÚBLICO (sin token) pidiendo rol Administrador -> queda como ANALISTA igual (id 3)
+POST http://localhost:8080/api/usuarios/registro
+Content-Type: application/json
+
+{ "idCentro": 1, "nombre": "Ana", "apellido": "Analista", "email": "ana@lims.cl",
+  "username": "ana", "password": "1234", "idRol": 1 }
+
+### 2a. Login SUPERVISOR
+POST http://localhost:8080/api/usuarios/login
+Content-Type: application/json
+
+{ "username": "cristian", "password": "1234" }
+
+> {% client.global.set("tokenSup", response.body.token); %}
+
+### 2b. Login ANALISTA
+POST http://localhost:8080/api/usuarios/login
+Content-Type: application/json
+
+{ "username": "ana", "password": "1234" }
+
+> {% client.global.set("tokenAna", response.body.token); %}
+
+### ------------------------------------------------------------------
+### SEGURIDAD: deben FALLAR
+### ------------------------------------------------------------------
+
+### S1. Sin token -> 401 "Sesión no válida o expirada"
+GET http://localhost:8080/api/muestras
+
+### S2. Analista intenta listar usuarios -> 403
+GET http://localhost:8080/api/usuarios
+Authorization: Bearer {{tokenAna}}
+
+### S3. Analista intenta crear un análisis del catálogo -> 403
+POST http://localhost:8080/api/analisis
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "nombre": "X", "unidadMedida": "u", "valorMinNormal": 1, "valorMaxNormal": 2 }
+
+### ------------------------------------------------------------------
+### FLUJO COMPLETO
+### ------------------------------------------------------------------
+
+### 3. El admin crea dos parámetros en el catálogo (ids 1 y 2)
+###    ⚠️ Rangos SOLO de prueba para ejercitar el sistema: los rangos reales de
+###    parámetros de algas deben cargarse desde una fuente validada.
+POST http://localhost:8080/api/analisis
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{ "nombre": "pH", "descripcion": "Potencial de hidrógeno del agua de la muestra", "unidadMedida": "pH",
+  "metodoReferencia": "Potenciométrico (rango de prueba)", "tiempoEstimadoHrs": 1, "valorMinNormal": 7.5, "valorMaxNormal": 8.5 }
+
+### 3b.
+POST http://localhost:8080/api/analisis
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{ "nombre": "Salinidad", "descripcion": "Salinidad práctica", "unidadMedida": "PSU",
+  "metodoReferencia": "Conductimetría (rango de prueba)", "tiempoEstimadoHrs": 1, "valorMinNormal": 28, "valorMaxNormal": 35 }
+
+### 3c. La analista registra al INVESTIGADOR que encarga el muestreo (id 1)
+POST http://localhost:8080/api/investigadores
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "nombre": "María", "apellido": "González", "institucion": "Universidad de Los Lagos",
+  "email": "maria.gonzalez@ejemplo.cl", "proyecto": "Monitoreo de macroalgas en el seno de Reloncaví" }
+
+### 4. La ANALISTA registra la muestra con investigador, almacenamiento y FIRMA de recepción
 POST http://localhost:8080/api/muestras
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{
-  "tipoMuestra": "Agua potable",
-  "procedencia": "Clínica Puerto Montt",
-  "prioridad": "Media",
-  "observaciones": "Muestra de prueba",
-  "idUsuarioRegistro": 2
-}
+{ "tipoMuestra": "Macroalga", "idInvestigador": 1, "procedencia": "Bahía Ilque, estación 3",
+  "prioridad": "Media", "fechaToma": "2026-10-15T09:30:00",
+  "condicionRecepcion": "Refrigerada 4 °C, envase sellado", "ubicacionAlmacenamiento": "Refrigerador 2, bandeja A",
+  "fechaVencimiento": "2027-10-15", "entregadaPor": "María González", "firmaRecepcion": true,
+  "observaciones": "Muestra de prueba" }
 
-### 2. Crear dos análisis en el catálogo (ids 1 y 2)
-POST http://localhost:8080/api/analisis
+### 4b. Firmar un TRASLADO en la cadena de custodia (la ubicación de la muestra se actualiza)
+POST http://localhost:8080/api/muestras/1/custodia
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{
-  "nombre": "Hemograma Completo",
-  "descripcion": "Conteo de células sanguíneas",
-  "unidadMedida": "cel/mm3",
-  "metodoReferencia": "Automatizado",
-  "tiempoEstimadoHrs": 2,
-  "valorMinNormal": 4.5,
-  "valorMaxNormal": 11.0
-}
+{ "tipoEvento": "Traslado", "entregadoPor": "Ana Analista", "ubicacion": "Congelador -20 °C, rack B, caja 4",
+  "condicion": "Congelada", "confirmado": true }
 
-### 2b.
-POST http://localhost:8080/api/analisis
-Content-Type: application/json
+### 4c. Ver la cadena de custodia
+GET http://localhost:8080/api/muestras/1/custodia
+Authorization: Bearer {{tokenAna}}
 
-{
-  "nombre": "pH",
-  "descripcion": "Potencial de hidrógeno",
-  "unidadMedida": "pH",
-  "metodoReferencia": "NCh 409",
-  "tiempoEstimadoHrs": 1,
-  "valorMinNormal": 6.5,
-  "valorMaxNormal": 8.5
-}
-
-### 3. Asignar ambos análisis a la muestra 1 (muestra_analisis ids 1 y 2)
+### 5. La analista asigna ambos análisis a la muestra 1
 POST http://localhost:8080/api/muestra-analisis
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
 { "idMuestra": 1, "idAnalisis": 1 }
 
-### 3b.
+### 5b.
 POST http://localhost:8080/api/muestra-analisis
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
 { "idMuestra": 1, "idAnalisis": 2 }
 
-### 4. La ANALISTA ingresa el primer resultado -> muestra pasa a "En analisis"
+### 6. La analista ingresa los resultados (muestra -> "En analisis" -> "Resultados ingresados")
 POST http://localhost:8080/api/resultados
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{
-  "idMuestraAnalisis": 1,
-  "valorResultado": 7.2,
-  "instrumentoUtilizado": "Analizador XN-1000",
-  "idUsuarioIngreso": 2,
-  "observaciones": null
-}
+{ "idMuestraAnalisis": 1, "valorResultado": 8.1, "instrumentoUtilizado": "pHmetro de terreno" }
 
-### 4b. La ANALISTA ingresa el segundo -> muestra pasa a "Resultados ingresados"
+### 6b.
 POST http://localhost:8080/api/resultados
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{
-  "idMuestraAnalisis": 2,
-  "valorResultado": 7.0,
-  "instrumentoUtilizado": "pHmetro",
-  "idUsuarioIngreso": 2,
-  "observaciones": null
-}
+{ "idMuestraAnalisis": 2, "valorResultado": 32.4, "instrumentoUtilizado": "Conductímetro" }
 
-### 5. Pendientes de aprobación (deben aparecer los 2)
+### 7. Pendientes de aprobación (2)
 GET http://localhost:8080/api/resultados?pendientes=true
+Authorization: Bearer {{tokenSup}}
 
-### ------------------------------------------------------------
-### PRUEBAS QUE DEBEN FALLAR (400)
-### ------------------------------------------------------------
-
-### 6a. La ANALISTA intenta aprobar -> "Solo un Supervisor o Administrador..."
+### S4. La ANALISTA intenta aprobar -> 403 (lo bloquea SecurityConfig)
 POST http://localhost:8080/api/aprobaciones
 Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
 
-{ "idResultado": 1, "idSupervisor": 2, "estadoAprobacion": "Aprobado", "comentario": null }
+{ "idResultado": 1, "estadoAprobacion": "Aprobado" }
 
-### 6b. Rechazo sin comentario -> "Un rechazo debe incluir un comentario..."
+### 8. El SUPERVISOR aprueba ambos (el evaluador sale del token) -> muestra "Aprobada"
 POST http://localhost:8080/api/aprobaciones
 Content-Type: application/json
+Authorization: Bearer {{tokenSup}}
 
-{ "idResultado": 1, "idSupervisor": 1, "estadoAprobacion": "Rechazado", "comentario": null }
+{ "idResultado": 1, "estadoAprobacion": "Aprobado" }
 
-### ------------------------------------------------------------
-### APROBACIONES CORRECTAS
-### ------------------------------------------------------------
-
-### 7. El SUPERVISOR aprueba el resultado 1 (la muestra sigue en "Resultados ingresados")
+### 8b.
 POST http://localhost:8080/api/aprobaciones
 Content-Type: application/json
+Authorization: Bearer {{tokenSup}}
 
-{ "idResultado": 1, "idSupervisor": 1, "estadoAprobacion": "Aprobado", "comentario": null }
+{ "idResultado": 2, "estadoAprobacion": "Aprobado" }
 
-### 7b. Aprobar OTRA VEZ el mismo -> DEBE FALLAR: "Este resultado ya fue evaluado anteriormente"
+### 8c. Aprobar otra vez -> 400 "Este resultado ya fue evaluado anteriormente"
 POST http://localhost:8080/api/aprobaciones
 Content-Type: application/json
+Authorization: Bearer {{tokenSup}}
 
-{ "idResultado": 1, "idSupervisor": 1, "estadoAprobacion": "Aprobado", "comentario": null }
+{ "idResultado": 1, "estadoAprobacion": "Aprobado" }
 
-### 8. El SUPERVISOR aprueba el resultado 2 -> muestra pasa a "Aprobada"
-POST http://localhost:8080/api/aprobaciones
-Content-Type: application/json
-
-{ "idResultado": 2, "idSupervisor": 1, "estadoAprobacion": "Aprobado", "comentario": null }
-
-### 9. Detalle: estado "Aprobada" + historial con 4 registros
-###    (Recepción -> En analisis -> Resultados ingresados -> Aprobada)
+### 9. Detalle: muestra Aprobada + historial + custodia
 GET http://localhost:8080/api/muestras/1
+Authorization: Bearer {{tokenAna}}
 
-### 10. Pendientes otra vez (debe venir vacío: [])
-GET http://localhost:8080/api/resultados?pendientes=true
+### S5. La ANALISTA intenta emitir el informe -> 403
+POST http://localhost:8080/api/muestras/1/reporte
+Authorization: Bearer {{tokenAna}}
 
-### 11. Listar muestras
-GET http://localhost:8080/api/muestras
-
-### ------------------------------------------------------------
-### RF05 — INFORME PDF
-### ------------------------------------------------------------
-
-### 12a. Intentar el informe de una muestra NO aprobada -> DEBE FALLAR (400)
-###      (crea antes otra muestra o usa una que no esté Aprobada)
-POST http://localhost:8080/api/muestras/2/reporte?idUsuario=1
-
-### 12b. Emitir el informe de la muestra 1 (Aprobada) -> PDF; la muestra pasa a "Reportada"
-###      El archivo queda guardado en lims-backend/reportes/ y también aquí:
-POST http://localhost:8080/api/muestras/1/reporte?idUsuario=1
+### 10. El SUPERVISOR emite el informe PDF -> muestra "Reportada"
+POST http://localhost:8080/api/muestras/1/reporte
+Authorization: Bearer {{tokenSup}}
 
 >> informe-prueba.pdf
 
-### 12c. Re-emitir -> versión 2 (Informe_M-2026-0001-v2.pdf), el historial no se duplica
-POST http://localhost:8080/api/muestras/1/reporte?idUsuario=1
+### ------------------------------------------------------------------
+### ADMINISTRACIÓN DE USUARIOS (solo admin)
+### ------------------------------------------------------------------
+
+### 11. Listar usuarios
+GET http://localhost:8080/api/usuarios
+Authorization: Bearer {{tokenAdmin}}
+
+### 12. La analista pide reset de contraseña (público)
+POST http://localhost:8080/api/usuarios/solicitar-reset
+Content-Type: application/json
+
+{ "username": "ana" }
+
+### 13. El admin le pone una nueva contraseña (cierra sus sesiones: {{tokenAna}} deja de servir)
+PUT http://localhost:8080/api/usuarios/3/resetear-password
+Content-Type: application/json
+Authorization: Bearer {{tokenAdmin}}
+
+{ "nuevaPassword": "nueva123" }
+
+### 14. Desactivar / activar a la analista
+PATCH http://localhost:8080/api/usuarios/3/estado?activo=false
+Authorization: Bearer {{tokenAdmin}}
+
+### 15. Cerrar sesión del supervisor (después {{tokenSup}} responde 401)
+POST http://localhost:8080/api/usuarios/logout
+Authorization: Bearer {{tokenSup}}

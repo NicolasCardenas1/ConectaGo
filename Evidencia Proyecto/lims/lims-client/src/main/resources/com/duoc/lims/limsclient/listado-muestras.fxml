@@ -14,7 +14,7 @@
 
     <HBox spacing="10" alignment="CENTER_LEFT">
         <Button fx:id="btnNuevaMuestra" text="+ Nueva muestra" styleClass="btn-primary" onAction="#onNuevaMuestra"/>
-        <TextField fx:id="txtBuscar" promptText="Buscar por código, cliente o tipo..." styleClass="search-field"/>
+        <TextField fx:id="txtBuscar" promptText="Buscar por código, investigador, sitio o tipo..." styleClass="search-field"/>
         <Button fx:id="btnActualizar" text="Actualizar" styleClass="btn-secondary" onAction="#onActualizar"/>
         <Button text="Ver detalle" styleClass="btn-secondary" onAction="#onVerDetalle"/>
         <Label fx:id="lblEstado" styleClass="status-text"/>
@@ -27,7 +27,8 @@
         <columns>
             <TableColumn fx:id="colCodigo" text="CÓDIGO" prefWidth="130"/>
             <TableColumn fx:id="colTipo" text="TIPO" prefWidth="130"/>
-            <TableColumn fx:id="colCliente" text="CLIENTE" prefWidth="200"/>
+            <TableColumn fx:id="colCliente" text="INVESTIGADOR" prefWidth="170"/>
+            <TableColumn fx:id="colSitio" text="SITIO DE MUESTREO" prefWidth="170"/>
             <TableColumn fx:id="colPrioridad" text="PRIORIDAD" prefWidth="100"/>
             <TableColumn fx:id="colEstado" text="ESTADO" prefWidth="160"/>
             <TableColumn fx:id="colFecha" text="FECHA INGRESO" prefWidth="140"/>

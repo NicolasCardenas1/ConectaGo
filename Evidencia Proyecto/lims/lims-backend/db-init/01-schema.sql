@@ -18,7 +18,7 @@
 --   2) Datos de cadena de custodia "ligera" en la propia muestra
 --      (condición de recepción, ubicación de almacenamiento, vencimiento).
 --   3) Distinción de muestras de control de calidad (blanco/duplicado/
---      estándar) vs. muestras de cliente, sin crear un módulo aparte.
+--      estándar) vs. muestras de investigadores, sin crear un módulo aparte.
 --   4) Trazabilidad de qué instrumento generó cada resultado.
 --   5) Justificación obligatoria para resultados fuera de rango y para
 --      aprobaciones rechazadas, forzada con CHECK constraints de MySQL 8.
@@ -117,6 +117,25 @@ CREATE TABLE analisis_catalogo (
 -- mientras tanto, un catálogo compartido es más simple de mantener.
 
 -- =====================================================================
+-- 3b. INVESTIGADORES  (v4 - dominio: investigación ambiental)
+-- =====================================================================
+-- El LIMS atiende a investigadores que toman muestras en terreno (ej. algas)
+-- y las conservan por largos periodos. El investigador NO es usuario del
+-- sistema: es quien encarga el muestreo y recibe el informe de resultados.
+
+CREATE TABLE investigadores (
+    id_investigador INT AUTO_INCREMENT PRIMARY KEY,
+    nombre          VARCHAR(100) NOT NULL,
+    apellido        VARCHAR(100) NOT NULL,
+    institucion     VARCHAR(150),                 -- universidad, centro de investigación, etc.
+    email           VARCHAR(150),
+    telefono        VARCHAR(30),
+    proyecto        VARCHAR(200),                 -- proyecto o línea de investigación
+    activo          BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_creacion  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- =====================================================================
 -- 4. MUESTRAS  (RF01 - registro con código único y estado de workflow)
 -- =====================================================================
 
@@ -124,9 +143,10 @@ CREATE TABLE muestras (
     id_muestra              INT AUTO_INCREMENT PRIMARY KEY,
     id_centro               INT NOT NULL,                  -- a qué laboratorio pertenece la muestra
     codigo_unico            VARCHAR(30) NOT NULL,          -- ej. LAB-2026-000123 (único DENTRO del centro)
-    tipo_muestra            ENUM('Agua potable','Agua residual','Sangre','Suelo','Alimento','Otro')
+    tipo_muestra            ENUM('Macroalga','Microalga','Agua de mar','Agua dulce','Sedimento','Otro')
                              NOT NULL DEFAULT 'Otro',
-    procedencia             VARCHAR(150),                  -- quién/qué origina la muestra
+    procedencia             VARCHAR(150),                  -- sitio / origen del muestreo (ej. "Bahía Ilque, 41.6°S 73.0°W")
+    id_investigador         INT NULL,                      -- investigador que encarga el muestreo (destinatario del informe)
     id_usuario_registro     INT NOT NULL,                  -- quién la ingresó al sistema
     fecha_toma              DATETIME NULL,                 -- cuándo se tomó la muestra
     fecha_recepcion         DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -135,17 +155,18 @@ CREATE TABLE muestras (
                              NOT NULL DEFAULT 'Recibida',
     tipo_registro           ENUM('Muestra','Blanco','Duplicado','Estandar')
                              NOT NULL DEFAULT 'Muestra',
-        -- Mejora: en todo LIMS real, junto a las muestras de cliente circulan
+        -- Mejora: en todo LIMS real, junto a las muestras de investigación circulan
         -- muestras de control de calidad (blancos, duplicados, estándares)
         -- que validan al analista/instrumento. Marcarlas aquí evita crear un
-        -- módulo aparte y permite excluirlas de los reportes al cliente.
+        -- módulo aparte y permite excluirlas de los informes al investigador.
     condicion_recepcion     VARCHAR(150),   -- estado físico/temperatura al recibir (cadena de custodia)
     ubicacion_almacenamiento VARCHAR(100),  -- dónde queda guardada físicamente
-    fecha_vencimiento       DATE NULL,      -- vida útil de la muestra (crítico en clínico/acuícola)
+    fecha_vencimiento       DATE NULL,      -- hasta cuándo debe conservarse la muestra
     prioridad               ENUM('Baja','Media','Alta') NOT NULL DEFAULT 'Media',
     observaciones           TEXT,
     CONSTRAINT fk_muestra_usuario FOREIGN KEY (id_usuario_registro) REFERENCES usuarios(id_usuario),
     CONSTRAINT fk_muestra_centro  FOREIGN KEY (id_centro) REFERENCES centros(id_centro),
+    CONSTRAINT fk_muestra_investigador FOREIGN KEY (id_investigador) REFERENCES investigadores(id_investigador),
     -- Único DENTRO de cada centro, no global: dos laboratorios distintos
     -- pueden generar el mismo código sin chocar entre sí.
     CONSTRAINT uq_muestra_codigo UNIQUE (id_centro, codigo_unico),
@@ -261,12 +282,37 @@ CREATE TABLE reportes (
 ) ENGINE=InnoDB;
 
 -- =====================================================================
+-- 9. CADENA DE CUSTODIA  (v4 - firma de entrega/recepción de la muestra)
+-- =====================================================================
+-- Cada vez que la muestra cambia de manos o de lugar (entrega del
+-- investigador, traslado a almacenamiento, retiro para análisis...) se
+-- registra un evento. La "firma" es la confirmación explícita del usuario
+-- que recibe, con fecha y hora (CHECK confirmado = TRUE).
+
+CREATE TABLE custodia_eventos (
+    id_custodia       INT AUTO_INCREMENT PRIMARY KEY,
+    id_muestra        INT NOT NULL,
+    tipo_evento       VARCHAR(40) NOT NULL,     -- Recepción en laboratorio / Traslado / Retiro para análisis / Devolución a almacenamiento
+    entregado_por     VARCHAR(150) NOT NULL,    -- quién entrega físicamente (ej. el investigador)
+    id_usuario_recibe INT NOT NULL,             -- quién recibe y firma en el sistema
+    ubicacion         VARCHAR(100),             -- dónde queda la muestra después del evento
+    condicion         VARCHAR(150),             -- estado / temperatura de la muestra
+    confirmado        BOOLEAN NOT NULL,         -- firma: confirmación explícita
+    fecha_hora        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    observaciones     VARCHAR(255),
+    CONSTRAINT fk_custodia_muestra FOREIGN KEY (id_muestra) REFERENCES muestras(id_muestra),
+    CONSTRAINT fk_custodia_usuario FOREIGN KEY (id_usuario_recibe) REFERENCES usuarios(id_usuario),
+    CONSTRAINT chk_custodia_firmada CHECK (confirmado = TRUE),
+    INDEX idx_custodia_muestra (id_muestra)
+) ENGINE=InnoDB;
+
+-- =====================================================================
 -- DATOS INICIALES MÍNIMOS (seed)
 -- =====================================================================
 
 -- Editar con los datos reales del laboratorio antes de usar en producción.
 INSERT INTO centros (nombre_centro, tipo_centro, direccion, telefono, email) VALUES
-    ('Laboratorio Central', 'Otro', 'Por definir', NULL, NULL);
+    ('Laboratorio Central', 'Ambiental', 'Por definir', NULL, NULL);
 
 INSERT INTO roles (nombre_rol, descripcion) VALUES
     ('Administrador', 'Gestiona usuarios, roles y catálogo de análisis'),

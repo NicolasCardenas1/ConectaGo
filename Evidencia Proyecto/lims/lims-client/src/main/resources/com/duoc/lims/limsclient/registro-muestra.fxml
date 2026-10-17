@@ -3,43 +3,100 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
-<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="com.duoc.lims.limsclient.controller.RegistroMuestraController"
-      styleClass="page">
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.duoc.lims.limsclient.controller.RegistroMuestraController"
+            fitToWidth="true" styleClass="transparent-scroll" style="-fx-background: #f1f5f9;">
+<VBox styleClass="page">
 
     <VBox spacing="3">
         <Label text="Registrar Nueva Muestra" styleClass="page-title"/>
-        <Label text="Completa los datos para generar el código único de la muestra" styleClass="page-subtitle"/>
+        <Label text="Recepción de una muestra de terreno: investigador, muestreo, almacenamiento y firma de recepción"
+               styleClass="page-subtitle"/>
     </VBox>
 
-    <VBox styleClass="card-panel" spacing="16" maxWidth="760">
+    <VBox styleClass="card-panel" spacing="14" maxWidth="820">
+
+        <!-- 1. Investigador -->
+        <Label text="1. Investigador solicitante" styleClass="section-title"/>
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <ComboBox fx:id="cbInvestigador" promptText="Selecciona el investigador que encarga el muestreo"
+                      prefWidth="460" styleClass="form-field"/>
+            <Button text="+ Nuevo investigador" styleClass="btn-secondary" onAction="#onNuevoInvestigador"/>
+        </HBox>
+
+        <Separator/>
+
+        <!-- 2. Muestra y muestreo -->
+        <Label text="2. Muestra y muestreo" styleClass="section-title"/>
         <GridPane hgap="24" vgap="8">
             <columnConstraints>
-                <ColumnConstraints minWidth="300" hgrow="ALWAYS"/>
-                <ColumnConstraints minWidth="300" hgrow="ALWAYS"/>
+                <ColumnConstraints minWidth="320" hgrow="ALWAYS"/>
+                <ColumnConstraints minWidth="320" hgrow="ALWAYS"/>
             </columnConstraints>
 
             <Label text="Código de muestra" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
             <Label text="Tipo de muestra *" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-
             <TextField fx:id="txtCodigo" text="(autogenerado al guardar)" editable="false" disable="true"
                        styleClass="form-field" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
             <ComboBox fx:id="cbTipoMuestra" maxWidth="Infinity" styleClass="form-field"
                       GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-            <Label text="Cliente *" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-            <Label text="Prioridad *" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-
-            <TextField fx:id="txtCliente" promptText="Ej: Clínica Puerto Montt" styleClass="form-field"
+            <Label text="Sitio de muestreo *" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <Label text="Fecha y hora de toma" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+            <TextField fx:id="txtSitio" promptText="Ej: Bahía Ilque, estación 3 (41.62°S 73.06°W)" styleClass="form-field"
                        GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-            <ComboBox fx:id="cbPrioridad" maxWidth="Infinity" styleClass="form-field"
-                      GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+            <HBox spacing="8" GridPane.rowIndex="3" GridPane.columnIndex="1">
+                <DatePicker fx:id="dpFechaToma" promptText="dd-mm-aaaa" prefWidth="170"/>
+                <TextField fx:id="txtHoraToma" promptText="HH:mm" prefWidth="80" styleClass="form-field"/>
+            </HBox>
 
-            <Label text="Observaciones" styleClass="field-name" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
-            <TextArea fx:id="txtObservaciones" promptText="Detalles adicionales de la muestra..."
-                      prefRowCount="4" wrapText="true"
-                      GridPane.rowIndex="5" GridPane.columnIndex="0" GridPane.columnSpan="2"/>
+            <Label text="Prioridad *" styleClass="field-name" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="cbPrioridad" maxWidth="Infinity" styleClass="form-field"
+                      GridPane.rowIndex="5" GridPane.columnIndex="0"/>
         </GridPane>
+
+        <Separator/>
+
+        <!-- 3. Almacenamiento -->
+        <Label text="3. Almacenamiento y conservación" styleClass="section-title"/>
+        <GridPane hgap="24" vgap="8">
+            <columnConstraints>
+                <ColumnConstraints minWidth="320" hgrow="ALWAYS"/>
+                <ColumnConstraints minWidth="320" hgrow="ALWAYS"/>
+            </columnConstraints>
+
+            <Label text="Condición de recepción" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <Label text="Ubicación de almacenamiento" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+            <TextField fx:id="txtCondicion" promptText="Ej: Refrigerada 4 °C, envase sellado" styleClass="form-field"
+                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <TextField fx:id="txtUbicacion" promptText="Ej: Congelador -20 °C, rack B, caja 4" styleClass="form-field"
+                       GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+
+            <Label text="Conservar hasta" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <DatePicker fx:id="dpVencimiento" promptText="dd-mm-aaaa" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+        </GridPane>
+
+        <Label text="Observaciones" styleClass="field-name"/>
+        <TextArea fx:id="txtObservaciones" promptText="Detalles adicionales de la muestra..." prefRowCount="3" wrapText="true"/>
+
+        <Separator/>
+
+        <!-- 4. Firma de recepción (cadena de custodia) -->
+        <Label text="4. Firma de recepción (cadena de custodia)" styleClass="section-title"/>
+        <GridPane hgap="24" vgap="8">
+            <columnConstraints>
+                <ColumnConstraints minWidth="320" hgrow="ALWAYS"/>
+                <ColumnConstraints minWidth="320" hgrow="ALWAYS"/>
+            </columnConstraints>
+            <Label text="Entregada por" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <Label text="Recibida por" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+            <TextField fx:id="txtEntregadaPor" promptText="Por defecto, el investigador" styleClass="form-field"
+                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <TextField fx:id="txtRecibidaPor" editable="false" disable="true" styleClass="form-field"
+                       GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+        </GridPane>
+        <CheckBox fx:id="chkFirma" wrapText="true"
+                  text="Confirmo que recibí esta muestra en la condición indicada (firma con fecha y hora)."/>
 
         <Label fx:id="lblEstado" styleClass="status-text" wrapText="true"/>
 
@@ -49,3 +106,4 @@
         </HBox>
     </VBox>
 </VBox>
+</ScrollPane>

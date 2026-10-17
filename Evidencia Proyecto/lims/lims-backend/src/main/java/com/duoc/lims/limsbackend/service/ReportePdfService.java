@@ -3,6 +3,9 @@ package com.duoc.lims.limsbackend.service;
 import com.duoc.lims.limsbackend.model.AnalisisCatalogo;
 import com.duoc.lims.limsbackend.model.Aprobacion;
 import com.duoc.lims.limsbackend.model.Centro;
+import com.duoc.lims.limsbackend.model.CustodiaEvento;
+import com.duoc.lims.limsbackend.model.Investigador;
+import com.duoc.lims.limsbackend.repository.CustodiaEventoRepository;
 import com.duoc.lims.limsbackend.model.Muestra;
 import com.duoc.lims.limsbackend.model.MuestraAnalisis;
 import com.duoc.lims.limsbackend.model.Reporte;
@@ -89,6 +92,7 @@ public class ReportePdfService {
     private final AprobacionRepository aprobacionRepository;
     private final ReporteRepository reporteRepository;
     private final EstadoMuestraService estadoMuestraService;
+    private final CustodiaEventoRepository custodiaRepository;
     private final Path carpetaReportes;
 
     public ReportePdfService(MuestraRepository muestraRepository,
@@ -98,6 +102,7 @@ public class ReportePdfService {
                              AprobacionRepository aprobacionRepository,
                              ReporteRepository reporteRepository,
                              EstadoMuestraService estadoMuestraService,
+                             CustodiaEventoRepository custodiaRepository,
                              @Value("${lims.reportes.dir:reportes}") String carpetaReportes) {
         this.muestraRepository = muestraRepository;
         this.usuarioRepository = usuarioRepository;
@@ -106,6 +111,7 @@ public class ReportePdfService {
         this.aprobacionRepository = aprobacionRepository;
         this.reporteRepository = reporteRepository;
         this.estadoMuestraService = estadoMuestraService;
+        this.custodiaRepository = custodiaRepository;
         this.carpetaReportes = Paths.get(carpetaReportes);
     }
 
@@ -166,23 +172,32 @@ public class ReportePdfService {
             writer.setPageEvent(new PieDePagina(numeroInforme));
             doc.open();
 
+            int n = 1;   // numeración de secciones
             doc.add(cabecera(muestra.getCentro(), numeroInforme, emision));
-            doc.add(seccion("1. Datos de la muestra"));
+            doc.add(seccion(n++ + ". Investigador solicitante"));
+            doc.add(datosInvestigador(muestra.getInvestigador()));
+            doc.add(seccion(n++ + ". Datos de la muestra"));
             doc.add(datosMuestra(muestra));
-            doc.add(seccion("2. Resultados de los análisis"));
+            doc.add(seccion(n++ + ". Resultados de los análisis"));
 
             Set<String> validadores = new LinkedHashSet<>();
             StringBuilder observaciones = new StringBuilder();
             doc.add(tablaResultados(analisis, validadores, observaciones));
 
             if (!observaciones.isEmpty()) {
-                doc.add(seccion("3. Observaciones del análisis"));
+                doc.add(seccion(n++ + ". Observaciones del análisis"));
                 Paragraph p = new Paragraph(observaciones.toString(), F_NORMAL);
                 p.setLeading(13);
                 doc.add(p);
             }
 
-            doc.add(seccion((observaciones.isEmpty() ? "3" : "4") + ". Validación y emisión"));
+            List<CustodiaEvento> custodia = custodiaRepository.findByMuestra_IdOrderByIdAsc(muestra.getId());
+            if (!custodia.isEmpty()) {
+                doc.add(seccion(n++ + ". Cadena de custodia"));
+                doc.add(tablaCustodia(custodia));
+            }
+
+            doc.add(seccion(n + ". Validación y emisión"));
             doc.add(validacion(validadores, emisor, emision));
 
             Paragraph nota = new Paragraph(
@@ -250,6 +265,28 @@ public class ReportePdfService {
         return p;
     }
 
+    private PdfPTable datosInvestigador(Investigador inv) throws DocumentException {
+        PdfPTable t = new PdfPTable(4);
+        t.setWidthPercentage(100);
+        t.setWidths(new float[]{1.3f, 2.2f, 1.3f, 2.2f});
+        if (inv == null) {
+            t.addCell(etiqueta("Investigador"));
+            PdfPCell c = valor("Sin investigador asociado (muestra registrada antes de la versión 4)");
+            c.setColspan(3);
+            t.addCell(c);
+            return t;
+        }
+        par(t, "Nombre", inv.getNombreCompleto());
+        par(t, "Institución", inv.getInstitucion());
+        par(t, "Email", inv.getEmail());
+        par(t, "Teléfono", inv.getTelefono());
+        t.addCell(etiqueta("Proyecto / línea"));
+        PdfPCell proyecto = valor(inv.getProyecto());
+        proyecto.setColspan(3);
+        t.addCell(proyecto);
+        return t;
+    }
+
     private PdfPTable datosMuestra(Muestra m) throws DocumentException {
         PdfPTable t = new PdfPTable(4);
         t.setWidthPercentage(100);
@@ -257,17 +294,44 @@ public class ReportePdfService {
 
         par(t, "Código", m.getCodigoUnico());
         par(t, "Tipo de muestra", m.getTipoMuestra().getValorDb());
-        par(t, "Cliente / procedencia", m.getProcedencia());
-        par(t, "Prioridad", m.getPrioridad().getValorDb());
+        par(t, "Sitio de muestreo", m.getProcedencia());
+        par(t, "Fecha de toma", m.getFechaToma() != null ? m.getFechaToma().format(FECHA_HORA) : null);
         par(t, "Fecha de recepción", m.getFechaRecepcion() != null ? m.getFechaRecepcion().format(FECHA_HORA) : null);
         par(t, "Registrada por", nombre(m.getUsuarioRegistro()));
-        par(t, "Fecha de toma", m.getFechaToma() != null ? m.getFechaToma().format(FECHA_HORA) : null);
         par(t, "Condición de recepción", m.getCondicionRecepcion());
+        par(t, "Ubicación de almacenamiento", m.getUbicacionAlmacenamiento());
+        par(t, "Conservar hasta", m.getFechaVencimiento() != null
+                ? m.getFechaVencimiento().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")) : null);
+        par(t, "Prioridad", m.getPrioridad().getValorDb());
 
         t.addCell(etiqueta("Observaciones"));
         PdfPCell obs = valor(m.getObservaciones());
         obs.setColspan(3);
         t.addCell(obs);
+        return t;
+    }
+
+    private PdfPTable tablaCustodia(List<CustodiaEvento> eventos) throws DocumentException {
+        String[] cabeceras = {"Fecha y hora", "Evento", "Entregado por", "Recibido y firmado por", "Ubicación", "Condición"};
+        PdfPTable t = new PdfPTable(cabeceras.length);
+        t.setWidthPercentage(100);
+        t.setWidths(new float[]{1.4f, 1.7f, 1.8f, 1.8f, 1.6f, 1.6f});
+        t.setHeaderRows(1);
+        for (String c : cabeceras) {
+            PdfPCell celda = new PdfPCell(new Phrase(c, F_TABLA_CAB));
+            celda.setBackgroundColor(AZUL);
+            celda.setBorderColor(AZUL);
+            celda.setPadding(5);
+            t.addCell(celda);
+        }
+        for (CustodiaEvento ev : eventos) {
+            t.addCell(celdaTabla(ev.getFechaHora() != null ? ev.getFechaHora().format(FECHA_HORA) : null));
+            t.addCell(celdaTabla(ev.getTipoEvento().getValorDb()));
+            t.addCell(celdaTabla(ev.getEntregadoPor()));
+            t.addCell(celdaTabla(nombre(ev.getUsuarioRecibe()) + " (firmado)"));
+            t.addCell(celdaTabla(ev.getUbicacion()));
+            t.addCell(celdaTabla(ev.getCondicion()));
+        }
         return t;
     }
 

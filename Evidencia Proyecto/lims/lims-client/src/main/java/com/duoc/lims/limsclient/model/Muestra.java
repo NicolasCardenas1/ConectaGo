@@ -42,4 +42,34 @@ public class Muestra {
 
     public String getObservaciones() { return observaciones; }
     public void setObservaciones(String observaciones) { this.observaciones = observaciones; }
+
+    // ---- v4: investigador y almacenamiento ----
+    private Integer idInvestigador;
+    private String investigador;
+    private String institucion;
+    private LocalDateTime fechaToma;
+    private String condicionRecepcion;
+    private String ubicacionAlmacenamiento;
+    private java.time.LocalDate fechaVencimiento;
+
+    public Integer getIdInvestigador() { return idInvestigador; }
+    public void setIdInvestigador(Integer idInvestigador) { this.idInvestigador = idInvestigador; }
+
+    public String getInvestigador() { return investigador; }
+    public void setInvestigador(String investigador) { this.investigador = investigador; }
+
+    public String getInstitucion() { return institucion; }
+    public void setInstitucion(String institucion) { this.institucion = institucion; }
+
+    public LocalDateTime getFechaToma() { return fechaToma; }
+    public void setFechaToma(LocalDateTime fechaToma) { this.fechaToma = fechaToma; }
+
+    public String getCondicionRecepcion() { return condicionRecepcion; }
+    public void setCondicionRecepcion(String condicionRecepcion) { this.condicionRecepcion = condicionRecepcion; }
+
+    public String getUbicacionAlmacenamiento() { return ubicacionAlmacenamiento; }
+    public void setUbicacionAlmacenamiento(String ubicacionAlmacenamiento) { this.ubicacionAlmacenamiento = ubicacionAlmacenamiento; }
+
+    public java.time.LocalDate getFechaVencimiento() { return fechaVencimiento; }
+    public void setFechaVencimiento(java.time.LocalDate fechaVencimiento) { this.fechaVencimiento = fechaVencimiento; }
 }

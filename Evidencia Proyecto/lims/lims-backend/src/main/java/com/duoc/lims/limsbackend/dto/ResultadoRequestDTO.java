@@ -18,7 +18,7 @@ public class ResultadoRequestDTO {
 
     private String instrumentoUtilizado;
 
-    @NotNull(message = "idUsuarioIngreso es obligatorio")
+    // RF06: lo completa el backend con el usuario de la sesión (el valor que envíe el cliente se ignora).
     private Integer idUsuarioIngreso;
 
     private String observaciones;

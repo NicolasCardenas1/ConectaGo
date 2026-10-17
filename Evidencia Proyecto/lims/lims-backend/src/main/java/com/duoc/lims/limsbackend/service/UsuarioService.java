@@ -1,6 +1,8 @@
 package com.duoc.lims.limsbackend.service;
 
 import com.duoc.lims.limsbackend.dto.LoginRequestDTO;
+import com.duoc.lims.limsbackend.dto.LoginResponseDTO;
+import com.duoc.lims.limsbackend.security.SesionService;
 import com.duoc.lims.limsbackend.dto.UsuarioRequestDTO;
 import com.duoc.lims.limsbackend.dto.UsuarioResponseDTO;
 import com.duoc.lims.limsbackend.model.Centro;
@@ -22,13 +24,19 @@ public class UsuarioService {
     private final RolRepository rolRepository;
     private final CentroRepository centroRepository;
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
+    private final SesionService sesionService;
+
+    /** Rol que recibe cualquier cuenta creada desde el registro público. */
+    private static final String ROL_REGISTRO_PUBLICO = "Analista";
 
     public UsuarioService(UsuarioRepository usuarioRepository,
                            RolRepository rolRepository,
-                           CentroRepository centroRepository) {
+                           CentroRepository centroRepository,
+                           SesionService sesionService) {
         this.usuarioRepository = usuarioRepository;
         this.rolRepository = rolRepository;
         this.centroRepository = centroRepository;
+        this.sesionService = sesionService;
     }
 
     public List<UsuarioResponseDTO> listar() {
@@ -62,7 +70,7 @@ public class UsuarioService {
         return toResponseDTO(guardado);
     }
 
-    public UsuarioResponseDTO login(LoginRequestDTO dto) {
+    public LoginResponseDTO login(LoginRequestDTO dto) {
         Usuario usuario = usuarioRepository.findByUsername(dto.getUsername())
                 .orElseThrow(() -> new IllegalArgumentException("Usuario o contraseña incorrectos"));
 
@@ -77,7 +85,35 @@ public class UsuarioService {
         usuario.setFechaUltimoLogin(LocalDateTime.now());
         usuarioRepository.save(usuario);
 
-        return toResponseDTO(usuario);
+        // RF06: se abre una sesión y se entrega el token que el cliente enviará en cada petición.
+        String token = sesionService.iniciar(usuario);
+        return new LoginResponseDTO(token, sesionService.expiracion(token), toResponseDTO(usuario));
+    }
+
+    /**
+     * Registro público (pantalla "Crear usuario" del login): la cuenta SIEMPRE queda como Analista,
+     * sin importar el rol que envíe el cliente. Supervisores y Administradores los crea un Administrador.
+     */
+    public UsuarioResponseDTO registrarPublico(UsuarioRequestDTO dto) {
+        Rol analista = rolRepository.findByNombreRol(ROL_REGISTRO_PUBLICO)
+                .orElseThrow(() -> new IllegalStateException("No existe el rol " + ROL_REGISTRO_PUBLICO));
+        dto.setIdRol(analista.getId());
+        return crear(dto);
+    }
+
+    /** Activa o desactiva un usuario (baja lógica). Al desactivarlo se cierran sus sesiones. */
+    public UsuarioResponseDTO cambiarEstado(Integer id, boolean activo, Integer idQuienLoHace) {
+        if (id.equals(idQuienLoHace) && !activo) {
+            throw new IllegalArgumentException("No puedes desactivar tu propia cuenta");
+        }
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + id));
+        usuario.setActivo(activo);
+        Usuario guardado = usuarioRepository.save(usuario);
+        if (!activo) {
+            sesionService.cerrarSesionesDe(id);
+        }
+        return toResponseDTO(guardado);
     }
 
     public void solicitarResetPassword(String username) {
@@ -98,6 +134,7 @@ public class UsuarioService {
                 .orElseThrow(() -> new IllegalArgumentException("Usuario no encontrado: " + id));
         usuario.setPasswordHash(passwordEncoder.encode(nuevaPassword));
         usuario.setRequiereResetPassword(false);
+        sesionService.cerrarSesionesDe(id);   // la contraseña cambió: se cierran sus sesiones abiertas
         Usuario actualizado = usuarioRepository.save(usuario);
         return toResponseDTO(actualizado);
     }

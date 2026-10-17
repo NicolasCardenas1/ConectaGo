@@ -1,11 +1,12 @@
 package com.duoc.lims.limsbackend.model.enums;
 
+/** Tipos de muestra del dominio de investigación ambiental (v4). */
 public enum TipoMuestra {
-    AGUA_POTABLE("Agua potable"),
-    AGUA_RESIDUAL("Agua residual"),
-    SANGRE("Sangre"),
-    SUELO("Suelo"),
-    ALIMENTO("Alimento"),
+    MACROALGA("Macroalga"),
+    MICROALGA("Microalga"),
+    AGUA_DE_MAR("Agua de mar"),
+    AGUA_DULCE("Agua dulce"),
+    SEDIMENTO("Sedimento"),
     OTRO("Otro");
 
     private final String valorDb;
@@ -22,6 +23,7 @@ public enum TipoMuestra {
         for (TipoMuestra t : values()) {
             if (t.valorDb.equals(valorDb)) return t;
         }
-        throw new IllegalArgumentException("Valor no reconocido para TipoMuestra: " + valorDb);
+        throw new IllegalArgumentException("Tipo de muestra no válido: " + valorDb
+                + " (use Macroalga, Microalga, Agua de mar, Agua dulce, Sedimento u Otro)");
     }
 }

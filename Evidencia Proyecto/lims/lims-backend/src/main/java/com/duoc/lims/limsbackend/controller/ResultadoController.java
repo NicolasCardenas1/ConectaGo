@@ -5,6 +5,8 @@ import com.duoc.lims.limsbackend.dto.ResultadoResponseDTO;
 import com.duoc.lims.limsbackend.service.ResultadoService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.duoc.lims.limsbackend.security.UsuarioAutenticado;
 import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
@@ -20,7 +22,9 @@ public class ResultadoController {
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public ResultadoResponseDTO ingresar(@Valid @RequestBody ResultadoRequestDTO dto) {
+    public ResultadoResponseDTO ingresar(@Valid @RequestBody ResultadoRequestDTO dto,
+                                         @AuthenticationPrincipal UsuarioAutenticado yo) {
+        dto.setIdUsuarioIngreso(yo.id());   // analista = usuario de la sesión
         return resultadoService.ingresar(dto);
     }
 
