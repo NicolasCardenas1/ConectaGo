@@ -36,3 +36,6 @@ application-aiven.properties
 
 ### Informes PDF generados por el backend (RF05) ###
 reportes/
+
+# Script local de datos de demo (no versionado)
+seed-demo.sql
