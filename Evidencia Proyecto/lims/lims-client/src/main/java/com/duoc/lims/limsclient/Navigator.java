@@ -129,6 +129,10 @@ public class Navigator {
         mostrarEnMarco("aprobaciones.fxml", "Aprobación de Resultados", "aprobaciones");
     }
 
+    public static void irAReportes() {
+        mostrarEnMarco("reportes.fxml", "Informes emitidos", "reportes");
+    }
+
     public static void irADetalleMuestra(int idMuestra) {
         DetalleMuestraController controller =
                 mostrarEnMarco("detalle-muestra.fxml", "Detalle de Muestra", "muestras");
