@@ -65,6 +65,8 @@ public class SecurityConfig {
                         // Solo Supervisor o Administrador (RF04 y RF05)
                         .requestMatchers(HttpMethod.POST, "/api/aprobaciones").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
                         .requestMatchers(HttpMethod.POST, "/api/muestras/*/reporte").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
+                        // Historial de informes y re-descarga (RF05): Supervisor o Administrador
+                        .requestMatchers(HttpMethod.GET, "/api/reportes", "/api/reportes/**").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
 
                         // Solo Administrador: catálogo de análisis (escritura) y usuarios
                         .requestMatchers(HttpMethod.POST, "/api/analisis").hasRole(ADMINISTRADOR)
