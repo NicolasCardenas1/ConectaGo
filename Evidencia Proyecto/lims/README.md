@@ -483,3 +483,4 @@ Resumen:
 > - Solo un backend a la vez (local o Aiven): comparten el puerto 8080.
 > - El plan gratuito de Aiven se suspende tras inactividad; la primera
 >   conexión puede tardar en "despertar".
+> .
