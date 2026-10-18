@@ -33,6 +33,7 @@ import com.duoc.lims.limsclient.model.MuestraDetalle;
 import com.duoc.lims.limsclient.model.IngresoResultadoRequest;
 import com.duoc.lims.limsclient.model.AprobacionRequest;
 import com.duoc.lims.limsclient.model.ResultadoPendiente;
+import com.duoc.lims.limsclient.model.ReporteResumen;
 
 public class ApiClient {
 
@@ -400,5 +401,35 @@ public class ApiClient {
 
     public void cambiarEstadoAnalisis(int id, boolean activo) throws IOException, InterruptedException {
         enviarJson("PATCH", "/analisis/" + id + "/estado?activo=" + activo, null, 200);
+    }
+
+    // =====================================================================
+    // RF05 — historial de informes emitidos (Supervisor / Administrador)
+    // =====================================================================
+
+    public List<ReporteResumen> listarReportes() throws IOException, InterruptedException {
+        HttpRequest request = nuevaPeticion()
+                .uri(URI.create(BASE_URL + "/reportes"))
+                .GET()
+                .build();
+        HttpResponse<String> response = enviar(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new IOException(response.body());
+        }
+        return objectMapper.readValue(response.body(),
+                objectMapper.getTypeFactory().constructCollectionType(List.class, ReporteResumen.class));
+    }
+
+    /** Re-descarga el PDF ya guardado de un informe (no genera uno nuevo). */
+    public byte[] descargarReportePdf(int idReporte) throws IOException, InterruptedException {
+        HttpRequest request = nuevaPeticion()
+                .uri(URI.create(BASE_URL + "/reportes/" + idReporte + "/pdf"))
+                .GET()
+                .build();
+        HttpResponse<byte[]> response = enviar(request, HttpResponse.BodyHandlers.ofByteArray());
+        if (response.statusCode() != 200) {
+            throw new IOException(new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
+        }
+        return response.body();
     }
 }

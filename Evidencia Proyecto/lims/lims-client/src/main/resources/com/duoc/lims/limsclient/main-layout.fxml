@@ -21,7 +21,8 @@
                     maxWidth="Infinity" onAction="#onInvestigadores"/>
             <Button fx:id="btnCatalogo" text="Parámetros y rangos" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onCatalogo"/>
-            <Button text="Reportes" styleClass="sidebar-item" maxWidth="Infinity" disable="true"/>
+            <Button fx:id="btnReportes" text="Reportes" styleClass="sidebar-item"
+                    maxWidth="Infinity" onAction="#onReportes"/>
             <Button fx:id="btnUsuarios" text="Usuarios" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onUsuarios"/>
             <Button text="Configuración" styleClass="sidebar-item" maxWidth="Infinity" disable="true"/>
