@@ -6,6 +6,9 @@ import com.duoc.lims.limsbackend.model.Centro;
 import com.duoc.lims.limsbackend.model.CustodiaEvento;
 import com.duoc.lims.limsbackend.model.Investigador;
 import com.duoc.lims.limsbackend.repository.CustodiaEventoRepository;
+import com.duoc.lims.limsbackend.repository.ResultadoVersionRepository;
+import com.duoc.lims.limsbackend.model.ResultadoVersion;
+import com.duoc.lims.limsbackend.model.SitioMuestreo;
 import com.duoc.lims.limsbackend.model.Muestra;
 import com.duoc.lims.limsbackend.model.MuestraAnalisis;
 import com.duoc.lims.limsbackend.model.Reporte;
@@ -40,6 +43,8 @@ import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -84,6 +89,7 @@ public class ReportePdfService {
     private static final Font F_NOTA = new Font(Font.HELVETICA, 7.5f, Font.ITALIC, GRIS_TEXTO);
 
     private static final DateTimeFormatter FECHA_HORA = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm");
+    private static final DateTimeFormatter FECHA = DateTimeFormatter.ofPattern("dd-MM-yyyy");
 
     private final MuestraRepository muestraRepository;
     private final UsuarioRepository usuarioRepository;
@@ -93,6 +99,7 @@ public class ReportePdfService {
     private final ReporteRepository reporteRepository;
     private final EstadoMuestraService estadoMuestraService;
     private final CustodiaEventoRepository custodiaRepository;
+    private final ResultadoVersionRepository versionRepository;
     private final Path carpetaReportes;
 
     public ReportePdfService(MuestraRepository muestraRepository,
@@ -103,6 +110,7 @@ public class ReportePdfService {
                              ReporteRepository reporteRepository,
                              EstadoMuestraService estadoMuestraService,
                              CustodiaEventoRepository custodiaRepository,
+                             ResultadoVersionRepository versionRepository,
                              @Value("${lims.reportes.dir:reportes}") String carpetaReportes) {
         this.muestraRepository = muestraRepository;
         this.usuarioRepository = usuarioRepository;
@@ -112,6 +120,7 @@ public class ReportePdfService {
         this.reporteRepository = reporteRepository;
         this.estadoMuestraService = estadoMuestraService;
         this.custodiaRepository = custodiaRepository;
+        this.versionRepository = versionRepository;
         this.carpetaReportes = Paths.get(carpetaReportes);
     }
 
@@ -189,6 +198,24 @@ public class ReportePdfService {
                 Paragraph p = new Paragraph(observaciones.toString(), F_NORMAL);
                 p.setLeading(13);
                 doc.add(p);
+            }
+
+            // v5: interpretación revisada por un supervisor (borrador IA o por reglas)
+            if (muestra.getInterpretacion() != null && !muestra.getInterpretacion().isBlank()) {
+                doc.add(seccion(n++ + ". Interpretación de resultados"));
+                Paragraph p = new Paragraph(muestra.getInterpretacion().trim(), F_NORMAL);
+                p.setLeading(13);
+                doc.add(p);
+                Paragraph origen = new Paragraph(textoOrigenInterpretacion(muestra), F_NOTA);
+                origen.setSpacingBefore(4);
+                doc.add(origen);
+            }
+
+            // v5: trazabilidad del dato — resultados que fueron corregidos
+            PdfPTable correcciones = tablaCorrecciones(analisis);
+            if (correcciones != null) {
+                doc.add(seccion(n++ + ". Historial de correcciones de resultados"));
+                doc.add(correcciones);
             }
 
             List<CustodiaEvento> custodia = custodiaRepository.findByMuestra_IdOrderByIdAsc(muestra.getId());
@@ -294,7 +321,7 @@ public class ReportePdfService {
 
         par(t, "Código", m.getCodigoUnico());
         par(t, "Tipo de muestra", m.getTipoMuestra().getValorDb());
-        par(t, "Sitio de muestreo", m.getProcedencia());
+        par(t, "Sitio de muestreo", textoSitio(m));
         par(t, "Fecha de toma", m.getFechaToma() != null ? m.getFechaToma().format(FECHA_HORA) : null);
         par(t, "Fecha de recepción", m.getFechaRecepcion() != null ? m.getFechaRecepcion().format(FECHA_HORA) : null);
         par(t, "Registrada por", nombre(m.getUsuarioRegistro()));
@@ -338,10 +365,10 @@ public class ReportePdfService {
     private PdfPTable tablaResultados(List<MuestraAnalisis> analisis, Set<String> validadores,
                                       StringBuilder observaciones) throws DocumentException {
         String[] cabeceras = {"Análisis", "Método", "Resultado", "Unidad", "Rango de referencia",
-                "Control", "Analista", "Validado por"};
+                "Control", "Equipo", "Analista", "Validado por"};
         PdfPTable t = new PdfPTable(cabeceras.length);
         t.setWidthPercentage(100);
-        t.setWidths(new float[]{2.0f, 1.7f, 1.2f, 1.1f, 1.6f, 1.3f, 1.6f, 1.8f});
+        t.setWidths(new float[]{1.8f, 1.5f, 1.45f, 1.0f, 1.45f, 1.3f, 1.4f, 1.5f, 1.6f});
         t.setHeaderRows(1);   // la cabecera se repite si la tabla continúa en otra página
 
         for (String c : cabeceras) {
@@ -366,16 +393,20 @@ public class ReportePdfService {
                 t.addCell(celdaTabla(null));
                 t.addCell(celdaTabla(null));
                 t.addCell(celdaTabla(null));
+                t.addCell(celdaTabla(null));
                 continue;
             }
 
             Resultado r = resultado.get();
-            PdfPCell valor = celdaTabla(numero(r.getValorResultado()));
-            valor.setPhrase(new Phrase(numero(r.getValorResultado()), new Font(Font.HELVETICA, 8.5f, Font.BOLD, TEXTO)));
+            String textoValor = numero(r.getValorResultado())
+                    + (r.getVersion() != null && r.getVersion() > 1 ? "  (v" + r.getVersion() + ")" : "");
+            PdfPCell valor = celdaTabla(textoValor);
+            valor.setPhrase(new Phrase(textoValor, new Font(Font.HELVETICA, 8.5f, Font.BOLD, TEXTO)));
             t.addCell(valor);
             t.addCell(celdaTabla(cat.getUnidadMedida()));
             t.addCell(celdaTabla(numero(cat.getValorMinNormal()) + " - " + numero(cat.getValorMaxNormal())));
             t.addCell(celdaControl(Boolean.TRUE.equals(r.getDentroRango())));
+            t.addCell(celdaTabla(textoEquipo(r)));
             t.addCell(celdaTabla(nombre(r.getUsuarioIngreso())));
 
             Optional<Aprobacion> aprobacion = aprobacionRepository.findTopByResultado_IdOrderByIdDesc(r.getId());
@@ -391,8 +422,77 @@ public class ReportePdfService {
                 observaciones.append("- ").append(cat.getNombre()).append(": ")
                         .append(r.getObservaciones().trim()).append("\n");
             }
+            if (r.isAnomalo()) {
+                observaciones.append("- ").append(cat.getNombre()).append(" (detección automática): ")
+                        .append(r.getDetalleAnomalia()).append("\n");
+            }
         }
         return t;
+    }
+
+    /** v5: una fila por cada versión de los resultados que tuvieron correcciones. */
+    private PdfPTable tablaCorrecciones(List<MuestraAnalisis> analisis) throws DocumentException {
+        String[] cabeceras = {"Análisis", "Versión", "Valor", "Fecha", "Ingresado por", "Motivo del cambio"};
+        PdfPTable t = new PdfPTable(cabeceras.length);
+        t.setWidthPercentage(100);
+        t.setWidths(new float[]{1.7f, 0.8f, 1.1f, 1.4f, 1.6f, 3.2f});
+        t.setHeaderRows(1);
+        for (String c : cabeceras) {
+            PdfPCell celda = new PdfPCell(new Phrase(c, F_TABLA_CAB));
+            celda.setBackgroundColor(AZUL);
+            celda.setBorderColor(AZUL);
+            celda.setPadding(5);
+            t.addCell(celda);
+        }
+        boolean hay = false;
+        for (MuestraAnalisis ma : analisis) {
+            Optional<Resultado> r = resultadoRepository.findByMuestraAnalisis_Id(ma.getId());
+            if (r.isEmpty() || r.get().getVersion() == null || r.get().getVersion() < 2) {
+                continue;
+            }
+            for (ResultadoVersion v : versionRepository.findByResultado_IdOrderByVersionAsc(r.get().getId())) {
+                hay = true;
+                t.addCell(celdaTabla(ma.getAnalisis().getNombre()));
+                t.addCell(celdaTabla("v" + v.getVersion()));
+                t.addCell(celdaTabla(numero(v.getValorResultado()) + " " + ma.getAnalisis().getUnidadMedida()));
+                t.addCell(celdaTabla(v.getFecha() != null ? v.getFecha().format(FECHA_HORA) : null));
+                t.addCell(celdaTabla(nombre(v.getUsuario())));
+                t.addCell(celdaTabla(v.getVersion() == 1 ? "Valor original" : v.getMotivoCambio()));
+            }
+        }
+        return hay ? t : null;
+    }
+
+    private String textoEquipo(Resultado r) {
+        if (r.getEquipo() == null) {
+            return r.getInstrumentoUtilizado();
+        }
+        LocalDate proxima = r.getEquipo().getFechaProximaCalibracion();
+        return r.getEquipo().getCodigo() + (proxima == null ? "" : "\ncal. vigente a " + proxima.format(FECHA));
+    }
+
+    private String textoSitio(Muestra m) {
+        SitioMuestreo s = m.getSitio();
+        if (s == null) {
+            return m.getProcedencia();
+        }
+        String coords = s.getLatitud().setScale(4, RoundingMode.HALF_UP).toPlainString() + ", "
+                + s.getLongitud().setScale(4, RoundingMode.HALF_UP).toPlainString();
+        String punto = m.getProcedencia() != null ? m.getProcedencia() : s.getNombre();
+        return s.getCodigo() + " · " + punto + "\n(" + coords + ")";
+    }
+
+    private String textoOrigenInterpretacion(Muestra m) {
+        String quien = nombre(m.getUsuarioInterpretacion());
+        String cuando = m.getFechaInterpretacion() != null ? m.getFechaInterpretacion().format(FECHA_HORA) : "";
+        String origen = m.getInterpretacionOrigen() == null ? "" : m.getInterpretacionOrigen();
+        return switch (origen) {
+            case "IA revisada" -> "Borrador generado con inteligencia artificial (Claude), revisado y validado por "
+                    + quien + " el " + cuando + ".";
+            case "Reglas revisadas" -> "Borrador generado automáticamente por reglas del sistema, revisado y validado por "
+                    + quien + " el " + cuando + ".";
+            default -> "Redactado por " + quien + " el " + cuando + ".";
+        };
     }
 
     private PdfPTable validacion(Set<String> validadores, Usuario emisor, LocalDateTime emision)

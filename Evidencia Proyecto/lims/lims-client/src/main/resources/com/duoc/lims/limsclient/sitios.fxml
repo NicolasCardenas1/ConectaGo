@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.web.*?>
+
+<!-- v5: sitios de muestreo georreferenciados (mapa + catálogo desplegable) -->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.duoc.lims.limsclient.controller.SitiosController"
+      styleClass="page">
+
+    <VBox spacing="3">
+        <Label text="Sitios de muestreo" styleClass="page-title"/>
+        <Label text="Dónde se toman las muestras: coordenadas, tipo de ambiente y resumen de resultados por sitio"
+               styleClass="page-subtitle"/>
+    </VBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button text="+ Nuevo sitio" styleClass="btn-primary" onAction="#onNuevo" minWidth="-Infinity"/>
+        <Button fx:id="btnEditar" text="Editar" styleClass="btn-secondary" onAction="#onEditar" minWidth="-Infinity"/>
+        <Button fx:id="btnEstado" text="Desactivar" styleClass="btn-secondary" onAction="#onCambiarEstado" minWidth="-Infinity"/>
+        <TextField fx:id="txtBuscar" promptText="Buscar por código, nombre o comuna..." styleClass="search-field"
+                   prefWidth="260" minWidth="160"/>
+        <Label text="Tip: haz clic en el mapa para registrar un sitio en ese punto" styleClass="hint" wrapText="true"
+               minWidth="120"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblMensaje" wrapText="true" maxWidth="300"/>
+    </HBox>
+
+    <SplitPane dividerPositions="0.5" VBox.vgrow="ALWAYS" style="-fx-background-color: transparent;">
+        <StackPane styleClass="card-panel" style="-fx-padding: 0;">
+            <WebView fx:id="mapa" minWidth="300"/>
+        </StackPane>
+        <TableView fx:id="tabla" styleClass="lims-table">
+            <columnResizePolicy>
+                <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+            </columnResizePolicy>
+            <columns>
+                <TableColumn fx:id="colCodigo" text="CÓDIGO" prefWidth="70" minWidth="64"/>
+                <TableColumn fx:id="colNombre" text="NOMBRE" prefWidth="200" minWidth="120"/>
+                <TableColumn fx:id="colTipo" text="AMBIENTE" prefWidth="110" minWidth="90"/>
+                <TableColumn fx:id="colComuna" text="COMUNA" prefWidth="100" minWidth="80"/>
+                <TableColumn fx:id="colMuestras" text="MUESTRAS" prefWidth="80" minWidth="80"/>
+                <TableColumn fx:id="colEstado" text="ESTADO" prefWidth="90" minWidth="90"/>
+            </columns>
+            <placeholder>
+                <Label text="Aún no hay sitios de muestreo."/>
+            </placeholder>
+        </TableView>
+    </SplitPane>
+</VBox>

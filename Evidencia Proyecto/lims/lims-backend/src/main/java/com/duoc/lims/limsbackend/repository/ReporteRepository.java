@@ -13,4 +13,7 @@ public interface ReporteRepository extends JpaRepository<Reporte, Integer> {
 
     /** Historial de informes emitidos, mas recientes primero (RF05). */
     List<Reporte> findAllByOrderByFechaGeneracionDesc();
+
+    /** v5: informes de una muestra (línea de tiempo de trazabilidad). */
+    List<Reporte> findByMuestra_IdOrderByVersionAsc(Integer idMuestra);
 }

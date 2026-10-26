@@ -12,4 +12,9 @@ public interface AprobacionRepository extends JpaRepository<Aprobacion, Integer>
     Optional<Aprobacion> findTopByResultado_IdOrderByIdDesc(Integer idResultado);
 
     boolean existsByResultado_Id(Integer idResultado);
+
+    // v5: cada versión del resultado se evalúa una sola vez
+    boolean existsByResultado_IdAndVersionResultado(Integer idResultado, Integer versionResultado);
+
+    List<Aprobacion> findByResultado_IdOrderByIdAsc(Integer idResultado);
 }

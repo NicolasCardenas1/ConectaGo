@@ -58,12 +58,20 @@ public class AprobacionService {
 
         validarQuePuedeEvaluar(supervisor, resultado);
 
-        // Un resultado se evalúa una sola vez (evita aprobaciones duplicadas).
-        if (aprobacionRepository.existsByResultado_Id(resultado.getId())) {
-            throw new IllegalArgumentException("Este resultado ya fue evaluado anteriormente");
+        // v5: cada VERSIÓN del resultado se evalúa una sola vez. Tras un rechazo, el analista corrige
+        // (versión nueva) y esa nueva versión vuelve a la bandeja del supervisor.
+        if (aprobacionRepository.existsByResultado_IdAndVersionResultado(resultado.getId(), resultado.getVersion())) {
+            throw new IllegalArgumentException("Esta versión del resultado ya fue evaluada anteriormente");
         }
 
         EstadoAprobacion estado = EstadoAprobacion.fromValorDb(dto.getEstadoAprobacion());
+
+        // v5: aprobar un valor marcado como atípico exige dejar constancia de por qué se acepta.
+        if (estado == EstadoAprobacion.APROBADO && resultado.isAnomalo()
+                && (dto.getComentario() == null || dto.getComentario().isBlank())) {
+            throw new IllegalArgumentException(
+                    "El resultado fue marcado como valor atípico: para aprobarlo deja un comentario que lo respalde");
+        }
 
         // Regla ISO 17025 (CHECK del esquema): un rechazo exige motivo.
         if (estado == EstadoAprobacion.RECHAZADO
@@ -74,6 +82,7 @@ public class AprobacionService {
 
         Aprobacion aprobacion = new Aprobacion();
         aprobacion.setResultado(resultado);
+        aprobacion.setVersionResultado(resultado.getVersion());
         aprobacion.setSupervisor(supervisor);
         aprobacion.setEstadoAprobacion(estado);
         aprobacion.setComentario(dto.getComentario());
@@ -111,10 +120,10 @@ public class AprobacionService {
         String analisis = resultado.getMuestraAnalisis().getAnalisis().getNombre();
 
         if (estado == EstadoAprobacion.RECHAZADO) {
-            // Un solo rechazo deja la muestra como Rechazada.
-            // (El flujo de reingreso tras un rechazo queda pendiente por decisión del equipo.)
+            // Un rechazo deja la muestra como Rechazada hasta que el analista corrija el resultado
+            // (v5: la corrección crea una versión nueva y la muestra vuelve a revisión).
             estadoMuestraService.cambiarEstado(muestra, EstadoMuestra.RECHAZADA, supervisor,
-                    "Rechazado " + analisis + ": " + comentario);
+                    "Rechazado " + analisis + " (v" + resultado.getVersion() + "): " + comentario);
         } else if (todosLosAnalisisAprobados(muestra)) {
             estadoMuestraService.cambiarEstado(muestra, EstadoMuestra.APROBADA, supervisor,
                     "Todos los análisis aprobados");
@@ -140,8 +149,10 @@ public class AprobacionService {
         if (resultado.isEmpty()) {
             return false;
         }
-        // La última evaluación registrada es la que manda.
+        // La última evaluación registrada es la que manda, y debe ser de la versión vigente.
+        Integer versionVigente = resultado.get().getVersion();
         return aprobacionRepository.findTopByResultado_IdOrderByIdDesc(resultado.get().getId())
+                .filter(a -> versionVigente.equals(a.getVersionResultado()))
                 .map(a -> a.getEstadoAprobacion() == EstadoAprobacion.APROBADO)
                 .orElse(false);
     }

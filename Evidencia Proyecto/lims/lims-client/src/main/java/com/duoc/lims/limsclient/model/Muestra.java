@@ -72,4 +72,42 @@ public class Muestra {
 
     public java.time.LocalDate getFechaVencimiento() { return fechaVencimiento; }
     public void setFechaVencimiento(java.time.LocalDate fechaVencimiento) { this.fechaVencimiento = fechaVencimiento; }
+
+    // ---- v5: sitio georreferenciado e interpretación del informe ----
+    private Integer idSitio;
+    private String sitioCodigo;
+    private String sitioNombre;
+    private java.math.BigDecimal latitud;
+    private java.math.BigDecimal longitud;
+    private String interpretacion;
+    private String interpretacionOrigen;
+    private String interpretacionPor;
+    private LocalDateTime fechaInterpretacion;
+
+    public Integer getIdSitio() { return idSitio; }
+    public void setIdSitio(Integer idSitio) { this.idSitio = idSitio; }
+
+    public String getSitioCodigo() { return sitioCodigo; }
+    public void setSitioCodigo(String sitioCodigo) { this.sitioCodigo = sitioCodigo; }
+
+    public String getSitioNombre() { return sitioNombre; }
+    public void setSitioNombre(String sitioNombre) { this.sitioNombre = sitioNombre; }
+
+    public java.math.BigDecimal getLatitud() { return latitud; }
+    public void setLatitud(java.math.BigDecimal latitud) { this.latitud = latitud; }
+
+    public java.math.BigDecimal getLongitud() { return longitud; }
+    public void setLongitud(java.math.BigDecimal longitud) { this.longitud = longitud; }
+
+    public String getInterpretacion() { return interpretacion; }
+    public void setInterpretacion(String interpretacion) { this.interpretacion = interpretacion; }
+
+    public String getInterpretacionOrigen() { return interpretacionOrigen; }
+    public void setInterpretacionOrigen(String interpretacionOrigen) { this.interpretacionOrigen = interpretacionOrigen; }
+
+    public String getInterpretacionPor() { return interpretacionPor; }
+    public void setInterpretacionPor(String interpretacionPor) { this.interpretacionPor = interpretacionPor; }
+
+    public LocalDateTime getFechaInterpretacion() { return fechaInterpretacion; }
+    public void setFechaInterpretacion(LocalDateTime fechaInterpretacion) { this.fechaInterpretacion = fechaInterpretacion; }
 }

@@ -32,6 +32,7 @@
                 <TableColumn fx:id="colAnalisis" text="ANÁLISIS" prefWidth="150"/>
                 <TableColumn fx:id="colValor" text="VALOR" prefWidth="100"/>
                 <TableColumn fx:id="colControl" text="CONTROL" prefWidth="120"/>
+                <TableColumn fx:id="colAlerta" text="ATÍPICO" prefWidth="80"/>
                 <TableColumn fx:id="colAnalista" text="INGRESADO POR" prefWidth="130"/>
                 <TableColumn fx:id="colFecha" text="FECHA" prefWidth="120"/>
             </columns>
@@ -69,7 +70,13 @@
 
                 <Label text="Fecha" styleClass="field-name" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
                 <Label fx:id="lblDetFecha" styleClass="field-value" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+                <Label text="Versión" styleClass="field-name" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+                <Label fx:id="lblDetVersion" styleClass="field-value" wrapText="true" GridPane.rowIndex="6" GridPane.columnIndex="1"/>
             </GridPane>
+
+            <!-- v5: detección automática de valores atípicos -->
+            <Label fx:id="lblDetAnomalia" wrapText="true" maxWidth="Infinity" minHeight="-Infinity" visible="false" managed="false"/>
 
             <Label text="Observaciones del analista" styleClass="field-name"/>
             <Label fx:id="lblDetObservaciones" styleClass="field-value" wrapText="true"/>

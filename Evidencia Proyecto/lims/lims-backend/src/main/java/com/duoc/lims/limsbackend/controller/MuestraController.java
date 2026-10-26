@@ -17,6 +17,11 @@ import com.duoc.lims.limsbackend.dto.MuestraDetalleDTO;
 import com.duoc.lims.limsbackend.dto.CustodiaEventoDTO;
 import com.duoc.lims.limsbackend.dto.CustodiaRequestDTO;
 import com.duoc.lims.limsbackend.service.CustodiaService;
+import com.duoc.lims.limsbackend.dto.InterpretacionDTO;
+import com.duoc.lims.limsbackend.dto.InterpretacionRequestDTO;
+import com.duoc.lims.limsbackend.dto.TrazabilidadEventoDTO;
+import com.duoc.lims.limsbackend.service.InterpretacionService;
+import com.duoc.lims.limsbackend.service.TrazabilidadService;
 
 import java.util.List;
 
@@ -27,12 +32,38 @@ public class MuestraController {
     private final MuestraService muestraService;
     private final ReportePdfService reportePdfService;
     private final CustodiaService custodiaService;
+    private final TrazabilidadService trazabilidadService;
+    private final InterpretacionService interpretacionService;
 
     public MuestraController(MuestraService muestraService, ReportePdfService reportePdfService,
-                             CustodiaService custodiaService) {
+                             CustodiaService custodiaService, TrazabilidadService trazabilidadService,
+                             InterpretacionService interpretacionService) {
         this.muestraService = muestraService;
         this.reportePdfService = reportePdfService;
         this.custodiaService = custodiaService;
+        this.trazabilidadService = trazabilidadService;
+        this.interpretacionService = interpretacionService;
+    }
+
+    /** v5 — Línea de tiempo completa: muestreo, custodia, versiones de resultados, aprobaciones e informes. */
+    @GetMapping("/{id}/trazabilidad")
+    public List<TrazabilidadEventoDTO> trazabilidad(@PathVariable Integer id) {
+        return trazabilidadService.lineaDeTiempo(id);
+    }
+
+    /** v5 — Borrador de interpretación de resultados (IA o reglas). No guarda nada. */
+    @PostMapping("/{id}/interpretacion/borrador")
+    public InterpretacionDTO borradorInterpretacion(@PathVariable Integer id) {
+        return interpretacionService.generarBorrador(id);
+    }
+
+    /** v5 — Guarda la interpretación revisada por el supervisor; aparece en el informe PDF. */
+    @PutMapping("/{id}/interpretacion")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void guardarInterpretacion(@PathVariable Integer id,
+                                      @Valid @RequestBody InterpretacionRequestDTO dto,
+                                      @AuthenticationPrincipal UsuarioAutenticado yo) {
+        interpretacionService.guardar(id, dto, yo.id());
     }
 
     /** Cadena de custodia de una muestra. */

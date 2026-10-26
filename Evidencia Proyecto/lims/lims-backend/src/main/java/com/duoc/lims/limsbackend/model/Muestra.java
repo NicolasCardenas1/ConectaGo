@@ -43,6 +43,11 @@ public class Muestra {
     @Column(name = "procedencia", length = 150)
     private String procedencia;
 
+    // v5: sitio de muestreo georreferenciado (null en muestras anteriores a v5)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_sitio")
+    private SitioMuestreo sitio;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario_registro", nullable = false)
     private Usuario usuarioRegistro;
@@ -82,4 +87,18 @@ public class Muestra {
 
     @Column(name = "observaciones", columnDefinition = "TEXT")
     private String observaciones;
+
+    // v5: interpretación de resultados para el informe (borrador IA revisado por un supervisor)
+    @Column(name = "interpretacion", columnDefinition = "TEXT")
+    private String interpretacion;
+
+    @Column(name = "interpretacion_origen", length = 40)
+    private String interpretacionOrigen;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_usuario_interpretacion")
+    private Usuario usuarioInterpretacion;
+
+    @Column(name = "fecha_interpretacion")
+    private LocalDateTime fechaInterpretacion;
 }

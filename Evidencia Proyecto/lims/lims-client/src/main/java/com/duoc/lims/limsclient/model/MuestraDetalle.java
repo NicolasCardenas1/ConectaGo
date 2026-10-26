@@ -49,5 +49,13 @@ public record MuestraDetalle(Muestra muestra, List<AnalisisItem> analisis, List<
             String instrumentoUtilizado,
             String usuarioIngreso,
             LocalDateTime fechaIngreso,
-            String observaciones) {}
+            String observaciones,
+            // v5: trazabilidad del dato
+            Integer version,
+            LocalDateTime fechaModificacion,
+            Integer idEquipo,
+            String estadoCalibracionEquipo,
+            boolean anomalo,
+            BigDecimal puntajeAnomalia,
+            String detalleAnomalia) {}
 }

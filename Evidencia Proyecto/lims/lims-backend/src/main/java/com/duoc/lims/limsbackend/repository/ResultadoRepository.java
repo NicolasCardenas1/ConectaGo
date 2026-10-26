@@ -13,10 +13,15 @@ public interface ResultadoRepository extends JpaRepository<Resultado, Integer> {
 
     Optional<Resultado> findByMuestraAnalisis_Id(Integer idMuestraAnalisis);
 
-    // Resultados que todavía no tienen ninguna evaluación del supervisor.
+    // v5: historial de un parámetro (detección de anomalías y tendencias)
+    List<Resultado> findByMuestraAnalisis_Analisis_Id(Integer idAnalisis);
+
+    // Resultados cuya versión vigente todavía no tiene evaluación del supervisor.
+    // v5: un resultado rechazado y luego corregido (versión nueva) vuelve a quedar pendiente.
     @Query("""
            SELECT r FROM Resultado r
-           WHERE NOT EXISTS (SELECT a FROM Aprobacion a WHERE a.resultado = r)
+           WHERE NOT EXISTS (SELECT a FROM Aprobacion a
+                             WHERE a.resultado = r AND a.versionResultado = r.version)
            ORDER BY r.fechaIngreso
            """)
     List<Resultado> findPendientesDeAprobacion();

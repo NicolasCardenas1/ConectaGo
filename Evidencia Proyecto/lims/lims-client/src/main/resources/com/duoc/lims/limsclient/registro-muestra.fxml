@@ -43,8 +43,11 @@
 
             <Label text="Sitio de muestreo *" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
             <Label text="Fecha y hora de toma" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
-            <TextField fx:id="txtSitio" promptText="Ej: Bahía Ilque, estación 3 (41.62°S 73.06°W)" styleClass="form-field"
-                       GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+            <HBox spacing="8" GridPane.rowIndex="3" GridPane.columnIndex="0">
+                <ComboBox fx:id="cbSitio" promptText="Selecciona el sitio georreferenciado" maxWidth="Infinity"
+                          HBox.hgrow="ALWAYS" styleClass="form-field"/>
+                <Button text="+ Nuevo sitio" styleClass="btn-secondary" onAction="#onNuevoSitio" minWidth="-Infinity"/>
+            </HBox>
             <HBox spacing="8" GridPane.rowIndex="3" GridPane.columnIndex="1">
                 <DatePicker fx:id="dpFechaToma" promptText="dd-mm-aaaa" prefWidth="170"/>
                 <TextField fx:id="txtHoraToma" promptText="HH:mm" prefWidth="80" styleClass="form-field"/>
@@ -53,6 +56,9 @@
             <Label text="Prioridad *" styleClass="field-name" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
             <ComboBox fx:id="cbPrioridad" maxWidth="Infinity" styleClass="form-field"
                       GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+            <Label text="Punto exacto (opcional)" styleClass="field-name" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
+            <TextField fx:id="txtPunto" promptText="Ej: estación 3, intermareal, 2 m de profundidad" styleClass="form-field"
+                       GridPane.rowIndex="5" GridPane.columnIndex="1"/>
         </GridPane>
 
         <Separator/>
@@ -67,10 +73,10 @@
 
             <Label text="Condición de recepción" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
             <Label text="Ubicación de almacenamiento" styleClass="field-name" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
-            <TextField fx:id="txtCondicion" promptText="Ej: Refrigerada 4 °C, envase sellado" styleClass="form-field"
-                       GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-            <TextField fx:id="txtUbicacion" promptText="Ej: Congelador -20 °C, rack B, caja 4" styleClass="form-field"
-                       GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+            <ComboBox fx:id="cbCondicion" editable="true" promptText="Selecciona o escribe la condición" maxWidth="Infinity"
+                      styleClass="form-field" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="cbUbicacion" promptText="Selecciona la ubicación" maxWidth="Infinity"
+                      styleClass="form-field" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
             <Label text="Conservar hasta" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
             <DatePicker fx:id="dpVencimiento" promptText="dd-mm-aaaa" GridPane.rowIndex="3" GridPane.columnIndex="0"/>

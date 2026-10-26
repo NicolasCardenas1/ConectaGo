@@ -3,28 +3,41 @@
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
+<!-- Ingreso de un resultado (RF02/RF03) y, desde v5, corrección con versión nueva y motivo obligatorio -->
 <VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
       fx:controller="com.duoc.lims.limsclient.controller.IngresoResultadoController"
-      spacing="10" prefWidth="440" styleClass="app-root" style="-fx-padding: 22;">
+      spacing="10" prefWidth="500" styleClass="app-root" style="-fx-padding: 22;">
 
-    <Label text="Ingreso de resultado" styleClass="page-title" style="-fx-font-size: 18px;"/>
+    <Label fx:id="lblTituloDialogo" text="Ingreso de resultado" styleClass="page-title" style="-fx-font-size: 18px;"/>
 
     <VBox styleClass="card-panel" spacing="4">
         <Label fx:id="lblAnalisis" styleClass="section-title"/>
         <Label fx:id="lblRango" styleClass="page-subtitle"/>
     </VBox>
 
+    <!-- Solo en corrección: valor vigente y motivo del rechazo -->
+    <Label fx:id="lblContextoCorreccion" wrapText="true" styleClass="aviso-info" visible="false" managed="false"
+           maxWidth="Infinity" minHeight="-Infinity"/>
+
     <Label text="Valor del resultado *" styleClass="field-name"/>
     <TextField fx:id="txtValor" promptText="Ej: 7.2" styleClass="form-field"/>
     <Label fx:id="lblAvisoRango" wrapText="true"/>
+    <!-- v5: detección de anomalías contra el historial del sitio (en vivo) -->
+    <Label fx:id="lblAnomalia" wrapText="true" maxWidth="Infinity" minHeight="-Infinity" visible="false" managed="false"/>
 
-    <Label text="Instrumento utilizado" styleClass="field-name"/>
-    <TextField fx:id="txtInstrumento" promptText="Ej: Analizador XN-1000" styleClass="form-field"/>
+    <Label text="Equipo utilizado *" styleClass="field-name"/>
+    <ComboBox fx:id="cbEquipo" promptText="Selecciona el equipo calibrado" maxWidth="Infinity" styleClass="form-field"/>
+    <Label fx:id="lblAvisoEquipo" wrapText="true" minHeight="-Infinity" styleClass="status-text"/>
 
     <Label fx:id="lblObservacionesTitulo" text="Observaciones" styleClass="field-name"/>
     <TextArea fx:id="txtObservaciones" prefRowCount="3" wrapText="true"/>
 
-    <Label fx:id="lblError" wrapText="true" styleClass="status-text"/>
+    <!-- Solo en corrección -->
+    <Label fx:id="lblMotivoTitulo" text="Motivo del cambio (obligatorio) *" styleClass="field-name" visible="false" managed="false"/>
+    <TextArea fx:id="txtMotivo" prefRowCount="2" wrapText="true" visible="false" managed="false"
+              promptText="Ej: relectura tras recalibrar la sonda; error de digitación en el valor original"/>
+
+    <Label fx:id="lblError" wrapText="true" minHeight="-Infinity" styleClass="status-text"/>
 
     <HBox spacing="10" alignment="CENTER_RIGHT">
         <Button text="Cancelar" styleClass="btn-secondary" onAction="#onCancelar"/>

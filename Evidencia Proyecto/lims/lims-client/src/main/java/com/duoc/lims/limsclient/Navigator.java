@@ -105,6 +105,19 @@ public class Navigator {
 
     // ---------- Pantallas dentro del marco (con barra lateral) ----------
 
+    /** v5: pantalla de inicio después del login (indicadores, alertas y tendencias). */
+    public static void irADashboard() {
+        mostrarEnMarco("dashboard.fxml", "Inicio", "inicio");
+    }
+
+    public static void irASitios() {
+        mostrarEnMarco("sitios.fxml", "Sitios de muestreo", "sitios");
+    }
+
+    public static void irAEquipos() {
+        mostrarEnMarco("equipos.fxml", "Equipos y almacenamiento", "equipos");
+    }
+
     public static void irAListado() {
         mostrarEnMarco("listado-muestras.fxml", "Listado de Muestras", "muestras");
     }
@@ -165,6 +178,7 @@ public class Navigator {
                     stage.setHeight(720);
                     stage.centerOnScreen();
                 }
+                stage.setMaximized(true);   // v5: más espacio para el panel, el mapa y la trazabilidad
             }
 
             FXMLLoader loader = new FXMLLoader(Navigator.class.getResource(fxml));

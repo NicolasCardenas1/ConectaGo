@@ -1,6 +1,5 @@
 package com.duoc.lims.limsbackend.dto;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.Setter;
@@ -19,8 +18,12 @@ public class MuestraRequestDTO {
     @NotNull(message = "idInvestigador es obligatorio")
     private Integer idInvestigador;
 
-    // Sitio / origen del muestreo (se guarda en la columna "procedencia").
-    @NotBlank(message = "el sitio de muestreo es obligatorio")
+    // v5: sitio de muestreo del catálogo georreferenciado (lista desplegable).
+    @NotNull(message = "el sitio de muestreo es obligatorio")
+    private Integer idSitio;
+
+    // Detalle opcional del punto exacto (ej. "estación 3, 2 m de profundidad").
+    // Se guarda en "procedencia" junto al nombre del sitio.
     private String procedencia;
 
     @NotNull(message = "prioridad es obligatorio")

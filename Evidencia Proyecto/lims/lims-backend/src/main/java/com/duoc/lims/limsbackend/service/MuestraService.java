@@ -17,6 +17,7 @@ import com.duoc.lims.limsbackend.dto.AnalisisDeMuestraDTO;
 import com.duoc.lims.limsbackend.dto.HistorialEstadoDTO;
 import com.duoc.lims.limsbackend.dto.CustodiaEventoDTO;
 import com.duoc.lims.limsbackend.model.Investigador;
+import com.duoc.lims.limsbackend.model.SitioMuestreo;
 import com.duoc.lims.limsbackend.model.enums.TipoEventoCustodia;
 import com.duoc.lims.limsbackend.repository.InvestigadorRepository;
 import com.duoc.lims.limsbackend.model.MuestraHistorialEstado;
@@ -54,6 +55,7 @@ public class MuestraService {
     private final MuestraHistorialEstadoRepository historialRepository;
     private final InvestigadorRepository investigadorRepository;
     private final CustodiaService custodiaService;
+    private final SitioService sitioService;
 
     public MuestraService(MuestraRepository muestraRepository,
                           CentroRepository centroRepository,
@@ -65,7 +67,8 @@ public class MuestraService {
                           EstadoMuestraService estadoMuestraService,
                           MuestraHistorialEstadoRepository historialRepository,
                           InvestigadorRepository investigadorRepository,
-                          CustodiaService custodiaService) {
+                          CustodiaService custodiaService,
+                          SitioService sitioService) {
         this.muestraRepository = muestraRepository;
         this.centroRepository = centroRepository;
         this.usuarioRepository = usuarioRepository;
@@ -77,6 +80,7 @@ public class MuestraService {
         this.historialRepository = historialRepository;
         this.investigadorRepository = investigadorRepository;
         this.custodiaService = custodiaService;
+        this.sitioService = sitioService;
     }
 
     @Transactional
@@ -94,6 +98,10 @@ public class MuestraService {
         if (!investigador.isActivo()) {
             throw new IllegalArgumentException("El investigador " + investigador.getNombreCompleto() + " está inactivo");
         }
+        SitioMuestreo sitio = sitioService.buscar(dto.getIdSitio());
+        if (!sitio.isActivo()) {
+            throw new IllegalArgumentException("El sitio " + sitio.getCodigo() + " está inactivo");
+        }
         if (dto.getFechaToma() != null && dto.getFechaVencimiento() != null
                 && dto.getFechaVencimiento().isBefore(dto.getFechaToma().toLocalDate())) {
             throw new IllegalArgumentException("La fecha 'conservar hasta' no puede ser anterior a la fecha de toma");
@@ -108,7 +116,10 @@ public class MuestraService {
         muestra.setFechaVencimiento(dto.getFechaVencimiento());
         muestra.setCodigoUnico(generarCodigoUnico(centro.getId()));
         muestra.setTipoMuestra(TipoMuestra.fromValorDb(dto.getTipoMuestra()));
-        muestra.setProcedencia(dto.getProcedencia());
+        muestra.setSitio(sitio);
+        String detalle = vacioANull(dto.getProcedencia());
+        String procedencia = detalle == null ? sitio.getNombre() : sitio.getNombre() + " — " + detalle;
+        muestra.setProcedencia(procedencia.length() > 150 ? procedencia.substring(0, 150) : procedencia);
         muestra.setUsuarioRegistro(usuario);
         muestra.setPrioridad(Prioridad.fromValorDb(dto.getPrioridad()));
         muestra.setObservaciones(dto.getObservaciones());
@@ -204,7 +215,17 @@ public class MuestraService {
                 m.getFechaToma(),
                 m.getCondicionRecepcion(),
                 m.getUbicacionAlmacenamiento(),
-                m.getFechaVencimiento()
+                m.getFechaVencimiento(),
+                m.getSitio() == null ? null : m.getSitio().getId(),
+                m.getSitio() == null ? null : m.getSitio().getCodigo(),
+                m.getSitio() == null ? null : m.getSitio().getNombre(),
+                m.getSitio() == null ? null : m.getSitio().getLatitud(),
+                m.getSitio() == null ? null : m.getSitio().getLongitud(),
+                m.getInterpretacion(),
+                m.getInterpretacionOrigen(),
+                m.getUsuarioInterpretacion() == null ? null
+                        : m.getUsuarioInterpretacion().getNombre() + " " + m.getUsuarioInterpretacion().getApellido(),
+                m.getFechaInterpretacion()
         );
     }
 

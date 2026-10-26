@@ -19,6 +19,9 @@ import java.util.List;
 public class MainLayoutController {
 
     @FXML private StackPane contenido;
+    @FXML private Button btnInicio;
+    @FXML private Button btnSitios;
+    @FXML private Button btnEquipos;
     @FXML private Button btnMuestras;
     @FXML private Button btnAprobaciones;
     @FXML private Button btnUsuarios;
@@ -49,10 +52,14 @@ public class MainLayoutController {
 
     /** Resalta en la barra lateral la sección actual ("muestras", "aprobaciones" o "usuarios"). */
     public void marcarSeccion(String seccion) {
-        for (Button b : List.of(btnMuestras, btnAprobaciones, btnUsuarios, btnInvestigadores, btnCatalogo, btnReportes)) {
+        for (Button b : List.of(btnInicio, btnMuestras, btnAprobaciones, btnUsuarios, btnInvestigadores, btnCatalogo,
+                btnReportes, btnSitios, btnEquipos)) {
             b.getStyleClass().remove("activo");
         }
         switch (seccion) {
+            case "inicio" -> btnInicio.getStyleClass().add("activo");
+            case "sitios" -> btnSitios.getStyleClass().add("activo");
+            case "equipos" -> btnEquipos.getStyleClass().add("activo");
             case "muestras" -> btnMuestras.getStyleClass().add("activo");
             case "aprobaciones" -> btnAprobaciones.getStyleClass().add("activo");
             case "usuarios" -> btnUsuarios.getStyleClass().add("activo");
@@ -61,6 +68,21 @@ public class MainLayoutController {
             case "reportes" -> btnReportes.getStyleClass().add("activo");
             default -> { }
         }
+    }
+
+    @FXML
+    private void onInicio() {
+        Navigator.irADashboard();
+    }
+
+    @FXML
+    private void onSitios() {
+        Navigator.irASitios();
+    }
+
+    @FXML
+    private void onEquipos() {
+        Navigator.irAEquipos();
     }
 
     @FXML
