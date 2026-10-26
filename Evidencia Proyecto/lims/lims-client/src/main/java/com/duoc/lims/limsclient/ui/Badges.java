@@ -2,6 +2,7 @@ package com.duoc.lims.limsclient.ui;
 
 import javafx.scene.control.Label;
 import javafx.scene.control.TableCell;
+import javafx.scene.layout.Region;
 
 /**
  * Etiquetas de color para los estados (muestra, análisis y aprobación).
@@ -34,6 +35,10 @@ public final class Badges {
             case "Inactivo", "Analista" -> "badge-gris";
             case "Reset solicitado" -> "badge-amarillo";
             case "Supervisor" -> "badge-azul";
+            // v5: calibración de equipos y detección de anomalías
+            case "Vigente" -> "badge-verde";
+            case "Por vencer", "Sin registro" -> "badge-amarillo";
+            case "Vencida", "Atípico" -> "badge-rojo";
             default -> "badge-gris";
         };
     }
@@ -54,7 +59,9 @@ public final class Badges {
                     setText(empty ? null : valor);
                 } else {
                     setText(null);
-                    setGraphic(crear(valor));
+                    Label etiqueta = crear(valor);
+                    etiqueta.setMinWidth(Region.USE_PREF_SIZE);   // la etiqueta nunca se corta ("Por ven...")
+                    setGraphic(etiqueta);
                 }
             }
         };

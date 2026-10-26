@@ -7,7 +7,8 @@ import java.time.LocalDateTime;
 public class MuestraRequest {
     private String tipoMuestra;
     private Integer idInvestigador;
-    private String procedencia;            // sitio de muestreo
+    private Integer idSitio;               // v5: sitio de muestreo del catálogo
+    private String procedencia;            // detalle opcional del punto (ej. "estación 3")
     private String prioridad;
     private String observaciones;
     private LocalDateTime fechaToma;
@@ -22,6 +23,9 @@ public class MuestraRequest {
 
     public Integer getIdInvestigador() { return idInvestigador; }
     public void setIdInvestigador(Integer idInvestigador) { this.idInvestigador = idInvestigador; }
+
+    public Integer getIdSitio() { return idSitio; }
+    public void setIdSitio(Integer idSitio) { this.idSitio = idSitio; }
 
     public String getProcedencia() { return procedencia; }
     public void setProcedencia(String procedencia) { this.procedencia = procedencia; }

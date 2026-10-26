@@ -14,6 +14,8 @@
             <Label text="Datos de recepción, análisis solicitados y resultados" styleClass="page-subtitle"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="btnInterpretacion" text="Interpretación (IA)" styleClass="btn-secondary"
+                onAction="#onInterpretacion"/>
         <Button fx:id="btnReporte" text="Generar informe PDF" styleClass="btn-primary"
                 onAction="#onGenerarReporte" disable="true"/>
     </HBox>
@@ -38,7 +40,7 @@
         <Label fx:id="lblPrioridad" styleClass="field-value" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
 
         <Label text="Sitio de muestreo" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-        <Label fx:id="lblCliente" styleClass="field-value" wrapText="true" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+        <Label fx:id="lblCliente" styleClass="field-value" wrapText="true" minHeight="-Infinity" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
         <Label text="Fecha de toma" styleClass="field-name" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
         <Label fx:id="lblFechaToma" styleClass="field-value" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
 
@@ -89,10 +91,26 @@
 
     <HBox spacing="12" alignment="CENTER_LEFT">
         <Button text="Ingresar resultado" styleClass="btn-primary" onAction="#onIngresarResultado"/>
-        <Label text="Selecciona un análisis de la tabla y presiona el botón" styleClass="hint"/>
+        <Button text="Corregir resultado" styleClass="btn-secondary" onAction="#onCorregirResultado"/>
+        <Button text="Ver versiones" styleClass="btn-secondary" onAction="#onVerVersiones"/>
+        <Label text="Selecciona un análisis de la tabla" styleClass="hint"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Label fx:id="lblMensaje" wrapText="true"/>
     </HBox>
+       </VBox>
+      </Tab>
+
+      <Tab text="Trazabilidad completa">
+       <VBox spacing="10" style="-fx-padding: 14 0 0 0;">
+        <HBox spacing="12" alignment="CENTER_LEFT">
+            <Label text="Todo lo que le pasó a la muestra y a cada dato, en orden: quién, cuándo, con qué equipo y por qué (ISO/IEC 17025)."
+                   styleClass="hint" wrapText="true" HBox.hgrow="ALWAYS"/>
+            <Label fx:id="lblResumenTraza" styleClass="hint"/>
+        </HBox>
+        <ScrollPane fitToWidth="true" styleClass="transparent-scroll" VBox.vgrow="ALWAYS"
+                    style="-fx-background: #f1f5f9;">
+            <VBox fx:id="contenedorTraza" spacing="0" style="-fx-padding: 4 10 10 4;"/>
+        </ScrollPane>
        </VBox>
       </Tab>
 

@@ -1,6 +1,6 @@
 -- =====================================================================
 -- PROYECTO APT — LIMS (Sistema de Gestión de Información de Laboratorio)
--- Esquema de Base de Datos — MySQL 8.x — v3
+-- Esquema de Base de Datos — MySQL 8.x — v5
 -- Equipo: Claudio Murua, Cristian Solís, Nicolás Cárdenas
 -- Cubre: RF01-RF06 y soporta RNF01, RNF03 del documento de Fase 1
 -- =====================================================================
@@ -136,6 +136,54 @@ CREATE TABLE investigadores (
 ) ENGINE=InnoDB;
 
 -- =====================================================================
+-- 3c. CATÁLOGOS DEL LABORATORIO  (v5 - geolocalización y desplegables)
+-- =====================================================================
+-- Sitios de muestreo con coordenadas: permiten ubicar cada muestra en un
+-- mapa y comparar resultados del mismo sitio en el tiempo (tendencias y
+-- detección de anomalías).
+
+CREATE TABLE sitios_muestreo (
+    id_sitio        INT AUTO_INCREMENT PRIMARY KEY,
+    codigo          VARCHAR(20)  NOT NULL UNIQUE,     -- ej. ST-001
+    nombre          VARCHAR(150) NOT NULL,
+    latitud         DECIMAL(9,6) NOT NULL,            -- grados decimales (sur = negativo)
+    longitud        DECIMAL(9,6) NOT NULL,            -- grados decimales (oeste = negativo)
+    tipo_ambiente   VARCHAR(40)  NOT NULL,            -- Marino costero, Estuario, Lago, Río, Humedal, Otro
+    comuna          VARCHAR(80),
+    region          VARCHAR(80),
+    descripcion     VARCHAR(255),
+    activo          BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_creacion  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_sitio_latitud  CHECK (latitud  BETWEEN -90  AND 90),
+    CONSTRAINT chk_sitio_longitud CHECK (longitud BETWEEN -180 AND 180)
+) ENGINE=InnoDB;
+
+-- Equipos con su calibración: cada resultado indica con qué equipo se midió
+-- y el backend impide usar un equipo con la calibración vencida (ISO 17025).
+CREATE TABLE equipos (
+    id_equipo                 INT AUTO_INCREMENT PRIMARY KEY,
+    codigo                    VARCHAR(30)  NOT NULL UNIQUE,   -- ej. EQ-001 (etiqueta física del equipo)
+    nombre                    VARCHAR(100) NOT NULL,
+    marca                     VARCHAR(80),
+    modelo                    VARCHAR(80),
+    numero_serie              VARCHAR(80),
+    fecha_ultima_calibracion  DATE NULL,
+    fecha_proxima_calibracion DATE NULL,                      -- vencida = no se puede usar
+    activo                    BOOLEAN NOT NULL DEFAULT TRUE,
+    fecha_creacion            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB;
+
+-- Ubicaciones físicas de almacenamiento (lista desplegable en vez de texto libre).
+CREATE TABLE ubicaciones_almacenamiento (
+    id_ubicacion   INT AUTO_INCREMENT PRIMARY KEY,
+    nombre         VARCHAR(100) NOT NULL UNIQUE,   -- se copia a muestras.ubicacion_almacenamiento
+    tipo           VARCHAR(40)  NOT NULL,          -- Ultracongelador, Congelador, Refrigerador, Estante, Cámara
+    temperatura    VARCHAR(30),
+    descripcion    VARCHAR(255),
+    activo         BOOLEAN NOT NULL DEFAULT TRUE
+) ENGINE=InnoDB;
+
+-- =====================================================================
 -- 4. MUESTRAS  (RF01 - registro con código único y estado de workflow)
 -- =====================================================================
 
@@ -145,7 +193,8 @@ CREATE TABLE muestras (
     codigo_unico            VARCHAR(30) NOT NULL,          -- ej. LAB-2026-000123 (único DENTRO del centro)
     tipo_muestra            ENUM('Macroalga','Microalga','Agua de mar','Agua dulce','Sedimento','Otro')
                              NOT NULL DEFAULT 'Otro',
-    procedencia             VARCHAR(150),                  -- sitio / origen del muestreo (ej. "Bahía Ilque, 41.6°S 73.0°W")
+    procedencia             VARCHAR(150),                  -- nombre del sitio (copia legible; antes de v5, texto libre)
+    id_sitio                INT NULL,                      -- v5: sitio de muestreo georreferenciado
     id_investigador         INT NULL,                      -- investigador que encarga el muestreo (destinatario del informe)
     id_usuario_registro     INT NOT NULL,                  -- quién la ingresó al sistema
     fecha_toma              DATETIME NULL,                 -- cuándo se tomó la muestra
@@ -164,7 +213,14 @@ CREATE TABLE muestras (
     fecha_vencimiento       DATE NULL,      -- hasta cuándo debe conservarse la muestra
     prioridad               ENUM('Baja','Media','Alta') NOT NULL DEFAULT 'Media',
     observaciones           TEXT,
+    -- v5: interpretación de resultados para el informe (borrador IA revisado por un supervisor)
+    interpretacion            TEXT NULL,
+    interpretacion_origen     VARCHAR(40) NULL,   -- "IA revisada" / "Reglas revisadas" / "Manual"
+    id_usuario_interpretacion INT NULL,
+    fecha_interpretacion      DATETIME NULL,
     CONSTRAINT fk_muestra_usuario FOREIGN KEY (id_usuario_registro) REFERENCES usuarios(id_usuario),
+    CONSTRAINT fk_muestra_sitio   FOREIGN KEY (id_sitio) REFERENCES sitios_muestreo(id_sitio),
+    CONSTRAINT fk_muestra_usuario_interp FOREIGN KEY (id_usuario_interpretacion) REFERENCES usuarios(id_usuario),
     CONSTRAINT fk_muestra_centro  FOREIGN KEY (id_centro) REFERENCES centros(id_centro),
     CONSTRAINT fk_muestra_investigador FOREIGN KEY (id_investigador) REFERENCES investigadores(id_investigador),
     -- Único DENTRO de cada centro, no global: dos laboratorios distintos
@@ -230,17 +286,52 @@ CREATE TABLE resultados (
     id_muestra_analisis  INT NOT NULL UNIQUE,   -- 1 resultado vigente por análisis solicitado
     valor_resultado      DECIMAL(12,4) NOT NULL, -- DECIMAL, no FLOAT: evita errores de redondeo en mediciones
     dentro_rango         BOOLEAN NOT NULL,       -- calculado por el backend contra el rango del análisis
-    instrumento_utilizado VARCHAR(100),           -- mejora: trazabilidad de qué equipo generó el resultado
+    instrumento_utilizado VARCHAR(100),           -- texto legible del equipo (copia de equipos.codigo + nombre)
+    id_equipo            INT NULL,                -- v5: equipo calibrado con que se midió
     id_usuario_ingreso   INT NOT NULL,
     fecha_ingreso        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     observaciones        TEXT,
+    version              INT NOT NULL DEFAULT 1,  -- v5: versión vigente (ver resultado_versiones)
+    fecha_modificacion   DATETIME NULL,
+    puntaje_anomalia     DECIMAL(8,2) NULL,       -- v5: puntaje z robusto (mediana/MAD) vs. historial
+    es_anomalo           BOOLEAN NOT NULL DEFAULT FALSE,
+    detalle_anomalia     VARCHAR(255) NULL,
     CONSTRAINT fk_resultado_ma      FOREIGN KEY (id_muestra_analisis) REFERENCES muestra_analisis(id_muestra_analisis),
     CONSTRAINT fk_resultado_usuario FOREIGN KEY (id_usuario_ingreso) REFERENCES usuarios(id_usuario),
+    CONSTRAINT fk_resultado_equipo  FOREIGN KEY (id_equipo) REFERENCES equipos(id_equipo),
     -- Mejora: ISO 17025 exige documentar por qué un resultado no conforme
     -- fue aceptado/reportado. MySQL 8 soporta CHECK real (se valida en cada
     -- INSERT/UPDATE, no solo se acepta y se ignora como en versiones viejas).
     CONSTRAINT chk_resultado_justificacion
         CHECK (dentro_rango = TRUE OR observaciones IS NOT NULL)
+) ENGINE=InnoDB;
+
+-- ---------------------------------------------------------------------
+-- v5: historial de versiones de cada resultado. Un resultado NUNCA se
+-- sobrescribe sin rastro: cada ingreso o corrección (por ejemplo, después
+-- de un rechazo) agrega una fila con el valor, el equipo, quién y cuándo,
+-- y el motivo del cambio (obligatorio desde la versión 2).
+-- ---------------------------------------------------------------------
+
+CREATE TABLE resultado_versiones (
+    id_version            INT AUTO_INCREMENT PRIMARY KEY,
+    id_resultado          INT NOT NULL,
+    version               INT NOT NULL,
+    valor_resultado       DECIMAL(12,4) NOT NULL,
+    dentro_rango          BOOLEAN NOT NULL,
+    id_equipo             INT NULL,
+    instrumento_utilizado VARCHAR(100),
+    observaciones         TEXT,
+    es_anomalo            BOOLEAN NOT NULL DEFAULT FALSE,
+    detalle_anomalia      VARCHAR(255),
+    id_usuario            INT NOT NULL,                  -- quién ingresó esta versión
+    fecha                 DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    motivo_cambio         VARCHAR(255) NULL,             -- obligatorio desde la versión 2
+    CONSTRAINT fk_rv_resultado FOREIGN KEY (id_resultado) REFERENCES resultados(id_resultado),
+    CONSTRAINT fk_rv_equipo    FOREIGN KEY (id_equipo) REFERENCES equipos(id_equipo),
+    CONSTRAINT fk_rv_usuario   FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
+    CONSTRAINT uq_rv_version UNIQUE (id_resultado, version),
+    CONSTRAINT chk_rv_motivo CHECK (version = 1 OR motivo_cambio IS NOT NULL)
 ) ENGINE=InnoDB;
 
 -- =====================================================================
@@ -254,6 +345,7 @@ CREATE TABLE resultados (
 CREATE TABLE aprobaciones (
     id_aprobacion     INT AUTO_INCREMENT PRIMARY KEY,
     id_resultado      INT NOT NULL,
+    version_resultado INT NOT NULL DEFAULT 1,   -- v5: qué versión del resultado se evaluó
     id_supervisor     INT NOT NULL,
     estado_aprobacion ENUM('Aprobado','Rechazado') NOT NULL,
     comentario        VARCHAR(255),
@@ -318,6 +410,29 @@ INSERT INTO roles (nombre_rol, descripcion) VALUES
     ('Administrador', 'Gestiona usuarios, roles y catálogo de análisis'),
     ('Supervisor',     'Aprueba o rechaza resultados ingresados por analistas'),
     ('Analista',       'Registra muestras e ingresa resultados de análisis');
+
+-- v5: catálogos iniciales (coordenadas referenciales, Región de Los Lagos)
+INSERT INTO sitios_muestreo (codigo, nombre, latitud, longitud, tipo_ambiente, comuna, region, descripcion) VALUES
+    ('ST-001', 'Bahía Ilque, estación 3',            -41.621500, -73.060800, 'Marino costero', 'Puerto Montt', 'Los Lagos', 'Pradera de macroalgas intermareal'),
+    ('ST-002', 'Isla Tenglo, sector norte',          -41.490300, -72.973500, 'Marino costero', 'Puerto Montt', 'Los Lagos', 'Frente al canal Tenglo'),
+    ('ST-003', 'Seno de Reloncaví, Caleta La Arena', -41.687900, -72.652700, 'Estuario',       'Puerto Montt', 'Los Lagos', 'Zona de mezcla agua dulce / marina'),
+    ('ST-004', 'Canal de Chacao, Pargua',            -41.792600, -73.429800, 'Marino costero', 'Calbuco',      'Los Lagos', 'Corrientes intensas, alta renovación'),
+    ('ST-005', 'Estuario río Maullín',               -41.611000, -73.598000, 'Estuario',       'Maullín',      'Los Lagos', 'Desembocadura del río Maullín'),
+    ('ST-006', 'Lago Llanquihue, Puerto Varas',      -41.317600, -72.983100, 'Lago',           'Puerto Varas', 'Los Lagos', 'Costanera, muestreo de agua dulce');
+
+INSERT INTO equipos (codigo, nombre, marca, modelo, numero_serie, fecha_ultima_calibracion, fecha_proxima_calibracion) VALUES
+    ('EQ-001', 'pHmetro de sobremesa',      'Hanna Instruments', 'HI5221',       'HI5221-0457', DATE_SUB(CURDATE(), INTERVAL 2 MONTH),  DATE_ADD(CURDATE(), INTERVAL 4 MONTH)),
+    ('EQ-002', 'Fluorómetro (clorofila-a)', 'Turner Designs',    'Trilogy',      'TR-7200-118', DATE_SUB(CURDATE(), INTERVAL 1 MONTH),  DATE_ADD(CURDATE(), INTERVAL 5 MONTH)),
+    ('EQ-003', 'Sonda multiparámetro',      'YSI',               'ProDSS',       'PD-19K10442', DATE_SUB(CURDATE(), INTERVAL 5 MONTH),  DATE_ADD(CURDATE(), INTERVAL 20 DAY)),
+    ('EQ-004', 'Espectrofotómetro UV-Vis',  'Hach',              'DR6000',       'DR6-1803344', DATE_SUB(CURDATE(), INTERVAL 3 MONTH),  DATE_ADD(CURDATE(), INTERVAL 3 MONTH)),
+    ('EQ-005', 'Balanza analítica',         'Sartorius',         'Quintix 125D', 'SQ-3302871',  DATE_SUB(CURDATE(), INTERVAL 13 MONTH), DATE_SUB(CURDATE(), INTERVAL 1 MONTH));
+
+INSERT INTO ubicaciones_almacenamiento (nombre, tipo, temperatura, descripcion) VALUES
+    ('Ultracongelador -80 °C · Rack A', 'Ultracongelador', '-80 °C',   'Conservación de largo plazo'),
+    ('Congelador -20 °C · Rack B',      'Congelador',      '-20 °C',   'Muestras de algas congeladas'),
+    ('Refrigerador 4 °C · Estante 1',   'Refrigerador',    '4 °C',     'Aguas y muestras en proceso'),
+    ('Cámara de cultivo 18 °C',         'Cámara',          '18 °C',    'Microalgas vivas'),
+    ('Estante temperatura ambiente',    'Estante',         'Ambiente', 'Muestras secas y sedimentos');
 
 -- =====================================================================
 -- FIN DEL NÚCLEO MVP (cubre exactamente RF01-RF06)

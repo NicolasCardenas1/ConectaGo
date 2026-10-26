@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 public record IngresoResultadoRequest(
         Integer idMuestraAnalisis,
         BigDecimal valorResultado,
+        Integer idEquipo,                 // v5: equipo calibrado (obligatorio)
         String instrumentoUtilizado,
         Integer idUsuarioIngreso,
         String observaciones) {}

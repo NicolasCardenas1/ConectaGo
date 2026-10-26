@@ -28,6 +28,9 @@ public class AprobacionesController {
     @FXML private TableColumn<ResultadoPendiente, String> colAnalisis;
     @FXML private TableColumn<ResultadoPendiente, String> colValor;
     @FXML private TableColumn<ResultadoPendiente, String> colControl;
+    @FXML private TableColumn<ResultadoPendiente, String> colAlerta;
+    @FXML private Label lblDetVersion;
+    @FXML private Label lblDetAnomalia;
     @FXML private TableColumn<ResultadoPendiente, String> colAnalista;
     @FXML private TableColumn<ResultadoPendiente, String> colFecha;
 
@@ -58,6 +61,10 @@ public class AprobacionesController {
         colValor.setCellValueFactory(d -> texto(numero(d.getValue().valorResultado()) + " " + d.getValue().unidadMedida()));
         colControl.setCellValueFactory(d -> texto(textoControl(d.getValue())));
         colControl.setCellFactory(c -> Badges.celda());
+        colAlerta.setCellValueFactory(d -> texto(d.getValue().anomalo() ? "Atípico" : "—"));
+        colAlerta.setCellFactory(c -> Badges.celda());
+        colMuestra.setCellValueFactory(d -> texto(d.getValue().codigoMuestra()
+                + (d.getValue().version() != null && d.getValue().version() > 1 ? "  (v" + d.getValue().version() + ")" : "")));
         colAnalista.setCellValueFactory(d -> texto(d.getValue().usuarioIngreso()));
         colFecha.setCellValueFactory(d -> texto(fecha(d.getValue())));
 
@@ -77,6 +84,12 @@ public class AprobacionesController {
 
     @FXML
     private void onAprobar() {
+        ResultadoPendiente sel = tablaPendientes.getSelectionModel().getSelectedItem();
+        if (sel != null && sel.anomalo() && comentario() == null) {
+            mostrarError("Es un valor atípico: para aprobarlo deja un comentario que lo respalde.");
+            txtComentario.requestFocus();
+            return;
+        }
         evaluar("Aprobado");
     }
 
@@ -156,7 +169,21 @@ public class AprobacionesController {
         lblDetRango.setText(numero(r.valorMinNormal()) + " – " + numero(r.valorMaxNormal()) + " " + r.unidadMedida());
         lblDetControl.setText(textoControl(r));
         lblDetControl.getStyleClass().setAll("label", "badge", Badges.claseColor(textoControl(r)));
-        lblDetInstrumento.setText(vacio(r.instrumentoUtilizado()));
+        lblDetInstrumento.setText(vacio(r.instrumentoUtilizado())
+                + (r.estadoCalibracionEquipo() == null ? "" : "\nCalibración: " + r.estadoCalibracionEquipo()));
+        lblDetVersion.setText(r.version() == null || r.version() <= 1 ? "v1 (original)"
+                : "v" + r.version() + " — corregido tras una revisión (ver historial en el detalle de la muestra)");
+        if (r.detalleAnomalia() != null) {
+            lblDetAnomalia.getStyleClass().setAll("label", r.anomalo() ? "aviso-alerta" : "aviso-ok");
+            lblDetAnomalia.setText((r.anomalo() ? "⚠ " : "✓ ") + r.detalleAnomalia());
+            lblDetAnomalia.setVisible(true);
+            lblDetAnomalia.setManaged(true);
+        } else {
+            lblDetAnomalia.setVisible(false);
+            lblDetAnomalia.setManaged(false);
+        }
+        txtComentario.setPromptText(r.anomalo() ? "Obligatorio: es un valor atípico (también si rechazas)"
+                : "Obligatorio si rechazas el resultado");
         lblDetAnalista.setText(vacio(r.usuarioIngreso()));
         lblDetFecha.setText(fecha(r));
         lblDetObservaciones.setText(vacio(r.observaciones()));
@@ -168,9 +195,12 @@ public class AprobacionesController {
 
     private void limpiarRevision() {
         lblDetTitulo.setText("Selecciona un resultado de la tabla");
-        for (Label l : List.of(lblDetValor, lblDetRango, lblDetInstrumento, lblDetAnalista, lblDetFecha, lblDetObservaciones)) {
+        for (Label l : List.of(lblDetValor, lblDetRango, lblDetInstrumento, lblDetAnalista, lblDetFecha, lblDetObservaciones,
+                lblDetVersion)) {
             l.setText("—");
         }
+        lblDetAnomalia.setVisible(false);
+        lblDetAnomalia.setManaged(false);
         lblDetControl.setText("");
         lblDetControl.getStyleClass().setAll("label");
         txtComentario.clear();

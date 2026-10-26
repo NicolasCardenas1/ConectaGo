@@ -42,7 +42,7 @@ public class LoginController {
             LoginRequest request = new LoginRequest(username, password);
             LoginResponse sesion = apiClient.login(request);   // guarda el token de sesión
             Navigator.setUsuarioActual(sesion.usuario());
-            Navigator.irAListado();
+            Navigator.irADashboard();
         } catch (IOException e) {
             mostrarError(e.getMessage());
         } catch (InterruptedException e) {

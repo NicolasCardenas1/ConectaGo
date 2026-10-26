@@ -97,7 +97,7 @@ POST http://localhost:8080/api/muestras
 Content-Type: application/json
 Authorization: Bearer {{tokenAna}}
 
-{ "tipoMuestra": "Macroalga", "idInvestigador": 1, "procedencia": "Bahía Ilque, estación 3",
+{ "tipoMuestra": "Macroalga", "idInvestigador": 1, "idSitio": 1, "procedencia": "estación 3, intermareal",
   "prioridad": "Media", "fechaToma": "2026-10-15T09:30:00",
   "condicionRecepcion": "Refrigerada 4 °C, envase sellado", "ubicacionAlmacenamiento": "Refrigerador 2, bandeja A",
   "fechaVencimiento": "2027-10-15", "entregadaPor": "María González", "firmaRecepcion": true,
@@ -134,14 +134,14 @@ POST http://localhost:8080/api/resultados
 Content-Type: application/json
 Authorization: Bearer {{tokenAna}}
 
-{ "idMuestraAnalisis": 1, "valorResultado": 8.1, "instrumentoUtilizado": "pHmetro de terreno" }
+{ "idMuestraAnalisis": 1, "valorResultado": 8.1, "idEquipo": 1 }
 
 ### 6b.
 POST http://localhost:8080/api/resultados
 Content-Type: application/json
 Authorization: Bearer {{tokenAna}}
 
-{ "idMuestraAnalisis": 2, "valorResultado": 32.4, "instrumentoUtilizado": "Conductímetro" }
+{ "idMuestraAnalisis": 2, "valorResultado": 32.4, "idEquipo": 3 }
 
 ### 7. Pendientes de aprobación (2)
 GET http://localhost:8080/api/resultados?pendientes=true
@@ -168,7 +168,7 @@ Authorization: Bearer {{tokenSup}}
 
 { "idResultado": 2, "estadoAprobacion": "Aprobado" }
 
-### 8c. Aprobar otra vez -> 400 "Este resultado ya fue evaluado anteriormente"
+### 8c. Aprobar otra vez -> 400 "Esta versión del resultado ya fue evaluada anteriormente"
 POST http://localhost:8080/api/aprobaciones
 Content-Type: application/json
 Authorization: Bearer {{tokenSup}}
@@ -188,6 +188,120 @@ POST http://localhost:8080/api/muestras/1/reporte
 Authorization: Bearer {{tokenSup}}
 
 >> informe-prueba.pdf
+
+### ------------------------------------------------------------------
+### v5 — TRAZABILIDAD, SITIOS, EQUIPOS, ANOMALÍAS E IA
+### (sitios 1-6 y equipos 1-5 vienen en 01-schema.sql; el equipo 5 tiene la calibración VENCIDA)
+### ------------------------------------------------------------------
+
+### 16. Sitios de muestreo con coordenadas y resumen para el mapa
+GET http://localhost:8080/api/sitios
+Authorization: Bearer {{tokenAna}}
+
+### 17. Equipos con estado de calibración (Vigente / Por vencer / Vencida)
+GET http://localhost:8080/api/equipos
+Authorization: Bearer {{tokenAna}}
+
+### S6. La ANALISTA intenta crear un equipo -> 403 (solo Administrador)
+POST http://localhost:8080/api/equipos
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "codigo": "EQ-099", "nombre": "Equipo de prueba" }
+
+### 18. Una segunda muestra con un análisis (muestra 2, muestra_analisis 3)
+POST http://localhost:8080/api/muestras
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "tipoMuestra": "Agua de mar", "idInvestigador": 1, "idSitio": 3, "prioridad": "Alta", "firmaRecepcion": true }
+
+### 18b.
+POST http://localhost:8080/api/muestra-analisis
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "idMuestra": 2, "idAnalisis": 2 }
+
+### S7. Ingresar con un equipo de calibración VENCIDA -> 400
+POST http://localhost:8080/api/resultados
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "idMuestraAnalisis": 3, "valorResultado": 31.0, "idEquipo": 5 }
+
+### 19. Vista previa de anomalía (con poco historial responde "sin historial suficiente")
+GET http://localhost:8080/api/resultados/anomalia?idMuestraAnalisis=3&valor=31
+Authorization: Bearer {{tokenAna}}
+
+### 19b. Ingreso correcto (resultado 3)
+POST http://localhost:8080/api/resultados
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "idMuestraAnalisis": 3, "valorResultado": 31.0, "idEquipo": 3 }
+
+### 20. El SUPERVISOR rechaza el resultado 3 -> muestra 2 "Rechazada"
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+Authorization: Bearer {{tokenSup}}
+
+{ "idResultado": 3, "estadoAprobacion": "Rechazado", "comentario": "Repetir lectura: sonda sin enjuagar" }
+
+### S8. Corregir sin motivo -> 400 "el motivo del cambio es obligatorio"
+PUT http://localhost:8080/api/resultados/3
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "valorResultado": 30.4, "idEquipo": 3 }
+
+### 21. La ANALISTA corrige -> versión 2; la muestra vuelve a "Resultados ingresados" y a la bandeja del supervisor
+PUT http://localhost:8080/api/resultados/3
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "valorResultado": 30.4, "idEquipo": 3, "motivoCambio": "Relectura tras enjuagar la sonda con agua destilada" }
+
+### 22. El SUPERVISOR aprueba la versión 2 -> muestra 2 "Aprobada"
+POST http://localhost:8080/api/aprobaciones
+Content-Type: application/json
+Authorization: Bearer {{tokenSup}}
+
+{ "idResultado": 3, "estadoAprobacion": "Aprobado" }
+
+### S9. Modificar un resultado APROBADO -> 400 (un dato aprobado no se puede modificar)
+PUT http://localhost:8080/api/resultados/3
+Content-Type: application/json
+Authorization: Bearer {{tokenAna}}
+
+{ "valorResultado": 29.0, "idEquipo": 3, "motivoCambio": "intento de cambio" }
+
+### 23. Versiones del resultado 3 (v1 rechazada, v2 aprobada, con motivo)
+GET http://localhost:8080/api/resultados/3/versiones
+Authorization: Bearer {{tokenAna}}
+
+### 24. Trazabilidad completa de la muestra 2 (línea de tiempo)
+GET http://localhost:8080/api/muestras/2/trazabilidad
+Authorization: Bearer {{tokenAna}}
+
+### 25. Borrador de interpretación (IA si hay ANTHROPIC_API_KEY; si no, por reglas) — Supervisor/Admin
+POST http://localhost:8080/api/muestras/2/interpretacion/borrador
+Authorization: Bearer {{tokenSup}}
+
+### 25b. Guardar la interpretación revisada (sale en el informe PDF)
+PUT http://localhost:8080/api/muestras/2/interpretacion
+Content-Type: application/json
+Authorization: Bearer {{tokenSup}}
+
+{ "texto": "La salinidad se encuentra dentro del rango de referencia luego de la relectura. Se sugiere mantener el monitoreo mensual.", "origen": "Reglas revisadas" }
+
+### 26. Panel de inicio: indicadores y alertas
+GET http://localhost:8080/api/dashboard
+Authorization: Bearer {{tokenAna}}
+
+### 27. Tendencia de un parámetro en un sitio
+GET http://localhost:8080/api/dashboard/tendencia?idAnalisis=2&idSitio=3
+Authorization: Bearer {{tokenAna}}
 
 ### ------------------------------------------------------------------
 ### ADMINISTRACIÓN DE USUARIOS (solo admin)

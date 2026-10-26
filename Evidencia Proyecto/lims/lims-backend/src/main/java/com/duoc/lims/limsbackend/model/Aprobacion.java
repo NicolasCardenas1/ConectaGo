@@ -26,6 +26,10 @@ public class Aprobacion {
     @JoinColumn(name = "id_resultado")
     private Resultado resultado;
 
+    // v5: versión del resultado que evaluó el supervisor (un rechazo obliga a corregir y crear otra)
+    @Column(name = "version_resultado", nullable = false)
+    private Integer versionResultado = 1;
+
     @ManyToOne(optional = false, fetch = FetchType.LAZY)
     @JoinColumn(name = "id_supervisor")
     private Usuario supervisor;

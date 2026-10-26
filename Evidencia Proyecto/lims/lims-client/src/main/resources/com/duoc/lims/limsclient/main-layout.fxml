@@ -13,20 +13,24 @@
         <VBox styleClass="sidebar" prefWidth="210" minWidth="210">
             <Label text="LIMS · Laboratorio" styleClass="sidebar-title"/>
 
+            <Button fx:id="btnInicio" text="Inicio" styleClass="sidebar-item"
+                    maxWidth="Infinity" onAction="#onInicio"/>
             <Button fx:id="btnMuestras" text="Muestras" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onMuestras"/>
             <Button fx:id="btnAprobaciones" text="Aprobaciones" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onAprobaciones"/>
             <Button fx:id="btnInvestigadores" text="Investigadores" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onInvestigadores"/>
+            <Button fx:id="btnSitios" text="Sitios y mapa" styleClass="sidebar-item"
+                    maxWidth="Infinity" onAction="#onSitios"/>
             <Button fx:id="btnCatalogo" text="Parámetros y rangos" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onCatalogo"/>
+            <Button fx:id="btnEquipos" text="Equipos y almacenamiento" styleClass="sidebar-item"
+                    maxWidth="Infinity" onAction="#onEquipos"/>
             <Button fx:id="btnReportes" text="Reportes" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onReportes"/>
             <Button fx:id="btnUsuarios" text="Usuarios" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onUsuarios"/>
-            <Button text="Configuración" styleClass="sidebar-item" maxWidth="Infinity" disable="true"/>
-            <Label text="Opciones en gris: próximamente" styleClass="sidebar-caption"/>
 
             <Region VBox.vgrow="ALWAYS"/>
 

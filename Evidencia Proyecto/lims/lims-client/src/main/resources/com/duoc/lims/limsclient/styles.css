@@ -414,3 +414,97 @@
 .lims-tabs .tab:selected .focus-indicator {
     -fx-border-color: transparent;
 }
+
+/* =====================================================================
+   v5 — Panel de inicio, gráficos, mapa y línea de tiempo de trazabilidad
+   ===================================================================== */
+
+/* Listas desplegables editables (condición de recepción): el editor interno no hereda el estilo del login */
+.combo-box.form-field > .text-field {
+    -fx-background-color: transparent;
+    -fx-border-width: 0;
+    -fx-padding: 0 4;
+    -fx-pref-height: -1;
+}
+
+/* Indicadores (KPI) */
+.kpi {
+    -fx-background-color: white;
+    -fx-background-radius: 8;
+    -fx-padding: 14 16;
+    -fx-spacing: 2;
+    -fx-min-width: 110;
+    -fx-pref-width: 150;
+    -fx-effect: dropshadow(gaussian, rgba(15, 23, 42, 0.08), 12, 0, 0, 2);
+}
+.kpi-label { -fx-font-size: 11px; -fx-font-weight: bold; -fx-text-fill: #64748b; -fx-wrap-text: true; }
+.kpi-valor { -fx-font-size: 24px; -fx-font-weight: bold; -fx-text-fill: #1e293b; }
+.kpi-valor-alerta { -fx-text-fill: #b91c1c; }
+.kpi-sub { -fx-font-size: 11px; -fx-text-fill: #94a3b8; -fx-wrap-text: true; }
+
+/* Gráficos: grilla tenue, ejes discretos, barras de un solo tono */
+.grafico .chart-plot-background { -fx-background-color: transparent; }
+.grafico .chart-horizontal-grid-lines { -fx-stroke: #e2e8f0; }
+.grafico .chart-vertical-grid-lines { -fx-stroke: #f1f5f9; }
+.grafico .chart-alternative-row-fill { -fx-fill: transparent; }
+.grafico .axis { -fx-tick-label-fill: #64748b; -fx-font-size: 11px; }
+.grafico .axis-line, .grafico .axis-tick-mark { -fx-stroke: #cbd5e1; }
+.grafico .default-color0.chart-bar { -fx-background-color: #1e4f80; -fx-background-radius: 0 4 4 0; }
+
+.leyenda-medido  { -fx-text-fill: #1e4f80; -fx-font-size: 11px; -fx-font-weight: bold; }
+.leyenda-fuera   { -fx-text-fill: #b45309; -fx-font-size: 11px; -fx-font-weight: bold; }
+.leyenda-atipico { -fx-text-fill: #b91c1c; -fx-font-size: 11px; -fx-font-weight: bold; }
+.leyenda-rango   { -fx-text-fill: #64748b; -fx-font-size: 11px; }
+
+.lista-alertas { -fx-background-color: transparent; -fx-border-color: #e2e8f0; -fx-border-radius: 6; }
+.lista-alertas .list-cell { -fx-background-color: white; -fx-border-color: transparent transparent #f1f5f9 transparent; }
+.lista-alertas .list-cell:selected { -fx-background-color: #eff6ff; -fx-text-fill: #1e293b; }
+
+/* Aviso destacado (anomalía, calibración) */
+.aviso-alerta {
+    -fx-background-color: #fef2f2;
+    -fx-border-color: #fecaca;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10;
+    -fx-text-fill: #991b1b;
+}
+.aviso-ok {
+    -fx-background-color: #f0fdf4;
+    -fx-border-color: #bbf7d0;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10;
+    -fx-text-fill: #166534;
+}
+.aviso-info {
+    -fx-background-color: #f8fafc;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 6;
+    -fx-background-radius: 6;
+    -fx-padding: 8 10;
+    -fx-text-fill: #475569;
+}
+
+/* Línea de tiempo de trazabilidad */
+.timeline-item { -fx-padding: 0 0 0 4; -fx-spacing: 12; }
+.timeline-punto {
+    -fx-min-width: 14; -fx-min-height: 14; -fx-max-width: 14; -fx-max-height: 14;
+    -fx-background-radius: 7;
+    -fx-background-color: #1e4f80;
+}
+.timeline-punto-alerta { -fx-background-color: #b91c1c; }
+.timeline-linea { -fx-min-width: 2; -fx-max-width: 2; -fx-background-color: #cbd5e1; }
+.timeline-tarjeta {
+    -fx-background-color: white;
+    -fx-background-radius: 6;
+    -fx-border-color: #e2e8f0;
+    -fx-border-radius: 6;
+    -fx-padding: 8 12;
+    -fx-spacing: 2;
+}
+.timeline-tarjeta-alerta { -fx-border-color: #fca5a5; -fx-background-color: #fffafa; }
+.timeline-fecha { -fx-font-size: 11px; -fx-text-fill: #64748b; -fx-font-weight: bold; }
+.timeline-titulo { -fx-font-size: 13px; -fx-font-weight: bold; -fx-text-fill: #1e293b; }
+.timeline-detalle { -fx-font-size: 12px; -fx-text-fill: #475569; -fx-wrap-text: true; }
+.timeline-usuario { -fx-font-size: 11px; -fx-text-fill: #94a3b8; }

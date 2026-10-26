@@ -8,12 +8,37 @@ Aplicación de escritorio para **investigadores que realizan muestreos ambiental
 >
 > **Alcance:** versión de 12 semanas (JavaFX + Spring Boot + MySQL) de una propuesta original de 8 meses.
 
+## Qué entregamos
+
+> **ConectaGo LIMS es una aplicación de escritorio para el laboratorio piloto de investigación ambiental de la Región de Los Lagos que garantiza la trazabilidad completa de cada muestra y de cada dato, desde el sitio de muestreo georreferenciado hasta el informe aprobado que recibe el investigador.**
+
+| | |
+|---|---|
+| **Problema** | Hoy las muestras de algas y agua se registran en papel y planillas: se pierde quién midió qué, con qué equipo, qué valor se corrigió y por qué, y no se detectan valores anómalos a tiempo. |
+| **Usuarios** | Analista (registra, mide), Supervisor (revisa, aprueba, informa), Administrador (catálogos, equipos, usuarios). El **investigador** recibe el informe. |
+| **Entregable final** | 1) Aplicación de escritorio (JavaFX) + API (Spring Boot) + base MySQL, con instalador. 2) Base de demostración con 8 meses de historial ambiental real de formato. 3) Manual de usuario y guía técnica ([Evidencia Proyecto/lims/README.md](Evidencia%20Proyecto/lims/README.md)). 4) Video y guion de demo ([GUION-DEMO.md](Evidencia%20Proyecto/lims/GUION-DEMO.md)). 5) Informe final APT. |
+| **Fuera de alcance** | Multi-laboratorio, app móvil de terreno, integración automática con equipos, acreditación ISO 17025 formal (el sistema está *diseñado según* sus requisitos de trazabilidad, no certificado). |
+
+## ¿Por qué un LIMS y no una planilla Excel?
+
+| En una planilla Excel | En ConectaGo LIMS |
+|---|---|
+| Cualquiera edita cualquier celda | **Permisos por rol**: el analista mide, el supervisor aprueba, y nadie aprueba su propio resultado |
+| Un valor se sobrescribe sin dejar rastro | **Cada resultado tiene versiones**: quién lo cambió, cuándo, con qué equipo y **por qué** (motivo obligatorio). Un dato aprobado no se puede modificar |
+| No se sabe con qué instrumento se midió ni si estaba calibrado | Cada resultado queda asociado a un **equipo con calibración vigente**; uno vencido **no se puede usar** |
+| El sitio es un texto escrito a mano | **Sitios georreferenciados** (latitud/longitud) en un **mapa**, y listas desplegables en vez de texto libre |
+| Validación manual (si alguien la hace) | **Validación automática de rangos** + **detección de valores atípicos** contra el historial del sitio, en vivo |
+| Un archivo por persona, versiones en conflicto | **Base central multiusuario**: todos ven el mismo estado en tiempo real |
+| Sin flujo de trabajo | **Flujo con estados**: recepción → análisis → aprobación → rechazo/corrección → informe, con **cadena de custodia firmada** |
+| Informe armado a mano | **Informe PDF versionado** con equipo, correcciones e **interpretación asistida por IA revisada por un supervisor** |
+| "¿Quién cambió esto?" no tiene respuesta | **Trazabilidad completa** de cada muestra en una línea de tiempo (requisito central de ISO/IEC 17025) |
+
 | | |
 |---|---|
 | **Equipo** | Claudio Murúa (Product Owner) · Nicolás Cárdenas (Scrum Master) · Cristian Solís |
 | **Docente** | Anibal Faúndez |
 | **Metodología** | Scrum — 6 sprints de 2 semanas |
-| **Estado** | RF01 a RF06 implementados · en etapa de pruebas, instalador y documentación final |
+| **Estado** | RF01 a RF06 implementados + **v5** (correcciones de la retroalimentación de Fase 2) · en etapa de pruebas, instalador y documentación final |
 
 ---
 
@@ -30,21 +55,42 @@ Aplicación de escritorio para **investigadores que realizan muestreos ambiental
 | Extra | **Cadena de custodia firmada**: cada entrega, traslado o retiro queda confirmado por quien recibe, con fecha y hora | ✅ |
 | Extra | **Historial de estados** de cada muestra (quién, cuándo, de qué estado a cuál y por qué) | ✅ |
 | Extra | **Tabla de parámetros y rangos normales** visible en la aplicación | ✅ |
+| **v5** | **Trazabilidad del dato**: versiones de cada resultado con motivo del cambio, rechazo → corrección → nueva aprobación, y línea de tiempo completa de la muestra | ✅ |
+| **v5** | **Equipos con calibración**: cada resultado indica el equipo; uno con calibración vencida no se puede usar | ✅ |
+| **v5** | **Sitios de muestreo georreferenciados** con **mapa** interactivo (OpenStreetMap) | ✅ |
+| **v5** | **Datos desplegables**: sitio, equipo, ubicación de almacenamiento y condición de recepción salen de catálogos | ✅ |
+| **v5** | **Inteligencia artificial**: detección automática de **valores atípicos** por sitio (estadística robusta) e **interpretación del informe** redactada por IA (Claude) y revisada por un supervisor | ✅ |
+| **v5** | **Panel de inicio** con indicadores, alertas de calidad y **tendencias** por sitio y parámetro | ✅ |
 
 ### Flujo de una muestra
 
 ```
 Recibida ─► En análisis ─► Resultados ingresados ─► Aprobada ─► Reportada (informe PDF)
-                                               └──► Rechazada
+                                  ▲            └──► Rechazada
+                                  └── corrección del analista (versión nueva, con motivo) ──┘
 ```
 
 ### Roles
 
 | Rol | Puede |
 |---|---|
-| **Analista** | Registrar investigadores y muestras, firmar la cadena de custodia, asignar análisis e ingresar resultados |
-| **Supervisor** | Todo lo anterior + aprobar/rechazar resultados y emitir informes PDF |
-| **Administrador** | Todo lo anterior + administrar usuarios, contraseñas y el catálogo de parámetros y rangos |
+| **Analista** | Registrar investigadores, sitios y muestras, firmar la cadena de custodia, asignar análisis, ingresar y corregir resultados |
+| **Supervisor** | Todo lo anterior + aprobar/rechazar resultados, redactar la interpretación (IA) y emitir informes PDF |
+| **Administrador** | Todo lo anterior + administrar usuarios, el catálogo de parámetros y rangos, los equipos (calibración) y las ubicaciones |
+
+---
+
+## Aporte de cada integrante
+
+Basado en el historial de commits del repositorio (`git log`, `git shortlog -sn`). Cada integrante trabaja en su propia rama (`Cardenas_Nicolas`, `Solis_Cristian`, `Murua_Claudio`) y se integra a `main` por pull request.
+
+| Integrante | Rol Scrum | Aporte principal |
+|---|---|---|
+| **Nicolás Cárdenas** | Scrum Master | Estructura del repositorio y documentación de Fase 1 y 2 (presentación, informe, Carta Gantt). **Backend:** catálogo de análisis (CRUD), análisis por muestra y **resultados con validación de rango** (RF02/RF03), **aprobaciones** con avance de estado (RF04), historial de informes emitidos (RF05) con su pantalla. Base compartida en la nube (Aiven) y documentación de endpoints |
+| **Cristian Solís** | Equipo de desarrollo | Base del proyecto (Spring Boot + JavaFX). **Muestras** (RF01): entidades JPA, endpoints, ventanas y registro de muestra. Endpoints de detalle, **pantalla de aprobación** (RF04) e historial de estados. **Exportación a PDF** (RF05). **v4:** dominio ambiental (investigadores, cadena de custodia) y seguridad por rol (RF06) |
+| **Claudio Murúa** | Product Owner | **Sistema de usuarios** (RF06): login, registro, roles y reseteo de contraseña (backend + cliente) y su documentación. **v5 (respuesta a la retroalimentación de Fase 2):** trazabilidad del dato (versiones, equipos con calibración, línea de tiempo), sitios georreferenciados y mapa, catálogos desplegables, detección de anomalías, interpretación con IA, panel de inicio, informe PDF ampliado y datos de demostración |
+
+> Tabla a validar por el equipo antes de la entrega: cada integrante debe confirmar su fila y, en la presentación, mostrar en vivo su propia parte.
 
 ---
 
@@ -110,7 +156,11 @@ cd ..\lims-client
 .\mvnw.cmd javafx:run
 ```
 
-En una base de datos nueva, el backend crea el usuario administrador **`admin` / `admin123`**. Si usan una base que ya existía (por ejemplo Aiven), primero ejecuten la migración `lims-backend/db-migrations/v4-dominio-ambiental.sql`. Desde ahí se crean los Supervisores y Analistas en la pantalla *Usuarios* (cambien esa contraseña al entrar).
+En una base de datos nueva, el backend crea el usuario administrador **`admin` / `admin123`**. Si usan una base que ya existía (por ejemplo Aiven), primero ejecuten **en orden** las migraciones `lims-backend/db-migrations/v4-dominio-ambiental.sql` y `v5-trazabilidad-sitios-ia.sql`. Desde ahí se crean los Supervisores y Analistas en la pantalla *Usuarios* (cambien esa contraseña al entrar).
+
+**Para una demo con datos** (tendencias, mapa y valores atípicos necesitan historial), carguen en la BD local `lims-backend/db-migrations/datos-demo-v5.sql`: crea 8 meses de muestras ambientales y los usuarios `supervisor.demo` / `super123` y `analista.demo` / `analista123`. El paso a paso de la presentación está en **[GUION-DEMO.md](Evidencia%20Proyecto/lims/GUION-DEMO.md)**.
+
+**IA (opcional):** si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY`, el borrador de interpretación del informe lo redacta Claude; sin ella, se genera por reglas y todo lo demás funciona igual.
 
 ➡️ La guía completa —configuración, base en la nube, endpoints de la API, datos de prueba con `test.http` y solución de problemas— está en **[Evidencia Proyecto/lims/README.md](Evidencia%20Proyecto/lims/README.md)**.
 
@@ -121,9 +171,12 @@ En una base de datos nueva, el backend crea el usuario administrador **`admin` /
 | Pantalla | Descripción |
 |---|---|
 | Inicio de sesión | Login, registro (como Analista) y "¿Olvidaste tu contraseña?" |
+| **Inicio** | Indicadores, **alertas de calidad** (atípicos, calibraciones, rechazos, conservación) y **tendencia** de un parámetro por sitio |
 | Listado de muestras | Tabla con estados en color y buscador en vivo |
-| Registro de muestra | Investigador, sitio y fecha de toma, almacenamiento y firma de recepción; genera el código único |
-| Detalle de muestra | Datos, análisis, ingreso de resultados, historial, **cadena de custodia** e informe PDF |
+| Registro de muestra | Investigador, **sitio del catálogo**, fecha de toma, **condición y ubicación desplegables** y firma de recepción; genera el código único |
+| Detalle de muestra | Datos, análisis, ingreso y **corrección** de resultados, **versiones**, **trazabilidad completa**, historial, **cadena de custodia**, **interpretación (IA)** e informe PDF |
+| **Sitios y mapa** | Mapa interactivo de los sitios de muestreo, coloreados según sus resultados |
+| **Equipos y almacenamiento** | Equipos con estado de calibración y ubicaciones de almacenamiento |
 | Investigadores | Quienes encargan los muestreos y reciben los informes |
 | Parámetros y rangos | Tabla de rangos normales por parámetro (el Administrador la mantiene) |
 | Aprobaciones | Resultados pendientes con panel de revisión (Supervisor / Administrador) |
@@ -133,8 +186,8 @@ En una base de datos nueva, el backend crea el usuario administrador **`admin` /
 
 ## Próximos pasos
 
-- Flujo de reingreso de un resultado después de un rechazo.
-- Pruebas unitarias JUnit de los servicios.
-- Cargar los parámetros reales de algas (clorofila-a, salinidad, pH, temperatura, nutrientes) con su fuente.
+- Pruebas unitarias JUnit de los servicios (detección de anomalías, corrección de resultados, aprobaciones).
+- Validar con la investigadora los rangos reales de los parámetros de algas y registrar su fuente.
+- Código QR en la etiqueta de la muestra y en el informe, que lleve a su trazabilidad.
 - Instalador (`.exe`), video demo, informe final y presentación.
 - HTTPS para una instalación en producción (RNF04).

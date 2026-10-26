@@ -34,6 +34,19 @@ import com.duoc.lims.limsclient.model.IngresoResultadoRequest;
 import com.duoc.lims.limsclient.model.AprobacionRequest;
 import com.duoc.lims.limsclient.model.ResultadoPendiente;
 import com.duoc.lims.limsclient.model.ReporteResumen;
+import com.duoc.lims.limsclient.model.Anomalia;
+import com.duoc.lims.limsclient.model.CorreccionResultadoRequest;
+import com.duoc.lims.limsclient.model.Dashboard;
+import com.duoc.lims.limsclient.model.Equipo;
+import com.duoc.lims.limsclient.model.EquipoRequest;
+import com.duoc.lims.limsclient.model.Interpretacion;
+import com.duoc.lims.limsclient.model.InterpretacionRequest;
+import com.duoc.lims.limsclient.model.ResultadoVersion;
+import com.duoc.lims.limsclient.model.Sitio;
+import com.duoc.lims.limsclient.model.SitioRequest;
+import com.duoc.lims.limsclient.model.TrazabilidadEvento;
+import com.duoc.lims.limsclient.model.Ubicacion;
+import com.duoc.lims.limsclient.model.UbicacionRequest;
 
 public class ApiClient {
 
@@ -418,6 +431,101 @@ public class ApiClient {
         }
         return objectMapper.readValue(response.body(),
                 objectMapper.getTypeFactory().constructCollectionType(List.class, ReporteResumen.class));
+    }
+
+    // =====================================================================
+    // v5 — Sitios, equipos, ubicaciones, trazabilidad, anomalías, IA y panel de inicio
+    // =====================================================================
+
+    private <T> List<T> lista(String json, Class<T> tipo) throws IOException {
+        return objectMapper.readValue(json, objectMapper.getTypeFactory().constructCollectionType(List.class, tipo));
+    }
+
+    public List<Sitio> listarSitios(boolean soloActivos) throws IOException, InterruptedException {
+        return lista(enviarJson("GET", "/sitios?activos=" + soloActivos, null, 200), Sitio.class);
+    }
+
+    public Sitio crearSitio(SitioRequest datos) throws IOException, InterruptedException {
+        return objectMapper.readValue(enviarJson("POST", "/sitios", datos, 201), Sitio.class);
+    }
+
+    public void actualizarSitio(int id, SitioRequest datos) throws IOException, InterruptedException {
+        enviarJson("PUT", "/sitios/" + id, datos, 200);
+    }
+
+    public void cambiarEstadoSitio(int id, boolean activo) throws IOException, InterruptedException {
+        enviarJson("PATCH", "/sitios/" + id + "/estado?activo=" + activo, null, 200);
+    }
+
+    public List<Equipo> listarEquipos(boolean soloActivos) throws IOException, InterruptedException {
+        return lista(enviarJson("GET", "/equipos?activos=" + soloActivos, null, 200), Equipo.class);
+    }
+
+    public void crearEquipo(EquipoRequest datos) throws IOException, InterruptedException {
+        enviarJson("POST", "/equipos", datos, 201);
+    }
+
+    public void actualizarEquipo(int id, EquipoRequest datos) throws IOException, InterruptedException {
+        enviarJson("PUT", "/equipos/" + id, datos, 200);
+    }
+
+    public void cambiarEstadoEquipo(int id, boolean activo) throws IOException, InterruptedException {
+        enviarJson("PATCH", "/equipos/" + id + "/estado?activo=" + activo, null, 200);
+    }
+
+    public List<Ubicacion> listarUbicaciones(boolean soloActivas) throws IOException, InterruptedException {
+        return lista(enviarJson("GET", "/ubicaciones?activas=" + soloActivas, null, 200), Ubicacion.class);
+    }
+
+    public void crearUbicacion(UbicacionRequest datos) throws IOException, InterruptedException {
+        enviarJson("POST", "/ubicaciones", datos, 201);
+    }
+
+    public void actualizarUbicacion(int id, UbicacionRequest datos) throws IOException, InterruptedException {
+        enviarJson("PUT", "/ubicaciones/" + id, datos, 200);
+    }
+
+    public void cambiarEstadoUbicacion(int id, boolean activo) throws IOException, InterruptedException {
+        enviarJson("PATCH", "/ubicaciones/" + id + "/estado?activo=" + activo, null, 200);
+    }
+
+    /** Vista previa de la detección de anomalías mientras se escribe el valor (no guarda nada). */
+    public Anomalia evaluarAnomalia(int idMuestraAnalisis, java.math.BigDecimal valor, Integer idResultado)
+            throws IOException, InterruptedException {
+        String ruta = "/resultados/anomalia?idMuestraAnalisis=" + idMuestraAnalisis + "&valor=" + valor.toPlainString()
+                + (idResultado == null ? "" : "&idResultado=" + idResultado);
+        return objectMapper.readValue(enviarJson("GET", ruta, null, 200), Anomalia.class);
+    }
+
+    /** Corrige un resultado: el backend crea una versión nueva y conserva la anterior. */
+    public void corregirResultado(int idResultado, CorreccionResultadoRequest datos) throws IOException, InterruptedException {
+        enviarJson("PUT", "/resultados/" + idResultado, datos, 200);
+    }
+
+    public List<ResultadoVersion> versionesResultado(int idResultado) throws IOException, InterruptedException {
+        return lista(enviarJson("GET", "/resultados/" + idResultado + "/versiones", null, 200), ResultadoVersion.class);
+    }
+
+    public List<TrazabilidadEvento> trazabilidad(int idMuestra) throws IOException, InterruptedException {
+        return lista(enviarJson("GET", "/muestras/" + idMuestra + "/trazabilidad", null, 200), TrazabilidadEvento.class);
+    }
+
+    public Interpretacion borradorInterpretacion(int idMuestra) throws IOException, InterruptedException {
+        return objectMapper.readValue(enviarJson("POST", "/muestras/" + idMuestra + "/interpretacion/borrador", null, 200),
+                Interpretacion.class);
+    }
+
+    public void guardarInterpretacion(int idMuestra, InterpretacionRequest datos) throws IOException, InterruptedException {
+        enviarJson("PUT", "/muestras/" + idMuestra + "/interpretacion", datos, 204);
+    }
+
+    public Dashboard dashboard() throws IOException, InterruptedException {
+        return objectMapper.readValue(enviarJson("GET", "/dashboard", null, 200), Dashboard.class);
+    }
+
+    public Dashboard.Tendencia tendencia(int idAnalisis, Integer idSitio) throws IOException, InterruptedException {
+        String ruta = "/dashboard/tendencia?idAnalisis=" + idAnalisis + (idSitio == null ? "" : "&idSitio=" + idSitio);
+        return objectMapper.readValue(enviarJson("GET", ruta, null, 200), Dashboard.Tendencia.class);
     }
 
     /** Re-descarga el PDF ya guardado de un informe (no genera uno nuevo). */

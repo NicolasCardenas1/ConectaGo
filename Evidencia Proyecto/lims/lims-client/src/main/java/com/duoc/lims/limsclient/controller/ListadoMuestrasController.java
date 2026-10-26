@@ -133,7 +133,10 @@ public class ListadoMuestrasController {
         lblEstado.setText("Cargando...");
         Thread hilo = new Thread(() -> {
             try {
-                var muestras = apiClient.listarMuestras();
+                // v5: las más recientes primero (las que se están trabajando quedan arriba)
+                var muestras = new java.util.ArrayList<>(apiClient.listarMuestras());
+                muestras.sort(java.util.Comparator.comparing(Muestra::getFechaRecepcion,
+                        java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())));
                 Platform.runLater(() -> {
                     todas.setAll(muestras);
                     lblEstado.setText("");

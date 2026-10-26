@@ -21,7 +21,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * | Ver muestras, registrar, asignar, ingresar     |    sí    |     sí     |      sí       |
  * | Aprobar / rechazar resultados                  |    no    |     sí     |      sí       |
  * | Emitir informe PDF                             |    no    |     sí     |      sí       |
+ * | Interpretación del informe (borrador IA)       |    no    |     sí     |      sí       |
  * | Crear / editar análisis del catálogo           |    no    |     no     |      sí       |
+ * | Crear / editar equipos y ubicaciones (v5)      |    no    |     no     |      sí       |
  * | Administrar usuarios y contraseñas             |    no    |     no     |      sí       |
  */
 @Configuration
@@ -67,11 +69,18 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/muestras/*/reporte").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
                         // Historial de informes y re-descarga (RF05): Supervisor o Administrador
                         .requestMatchers(HttpMethod.GET, "/api/reportes", "/api/reportes/**").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
+                        // v5: interpretación de resultados para el informe (borrador IA y versión revisada)
+                        .requestMatchers("/api/muestras/*/interpretacion", "/api/muestras/*/interpretacion/**")
+                                .hasAnyRole(SUPERVISOR, ADMINISTRADOR)
 
                         // Solo Administrador: catálogo de análisis (escritura) y usuarios
                         .requestMatchers(HttpMethod.POST, "/api/analisis").hasRole(ADMINISTRADOR)
                         .requestMatchers(HttpMethod.PUT, "/api/analisis/**").hasRole(ADMINISTRADOR)
                         .requestMatchers(HttpMethod.PATCH, "/api/analisis/**").hasRole(ADMINISTRADOR)
+                        // v5: equipos (calibración) y ubicaciones de almacenamiento: lectura para todos, escritura Administrador
+                        .requestMatchers(HttpMethod.POST, "/api/equipos", "/api/ubicaciones").hasRole(ADMINISTRADOR)
+                        .requestMatchers(HttpMethod.PUT, "/api/equipos/**", "/api/ubicaciones/**").hasRole(ADMINISTRADOR)
+                        .requestMatchers(HttpMethod.PATCH, "/api/equipos/**", "/api/ubicaciones/**").hasRole(ADMINISTRADOR)
                         .requestMatchers("/api/usuarios/**").hasRole(ADMINISTRADOR)
                         .requestMatchers("/api/usuarios").hasRole(ADMINISTRADOR)
 

@@ -24,4 +24,14 @@ public class ResultadoResponseDTO {
     private String usuarioIngreso;
     private LocalDateTime fechaIngreso;
     private String observaciones;
+    // ---- v5: trazabilidad del dato ----
+    private Integer version;              // versión vigente (1 = sin correcciones)
+    private LocalDateTime fechaModificacion;
+    private Integer idEquipo;
+    private String estadoCalibracionEquipo;
+    private boolean anomalo;
+    private BigDecimal puntajeAnomalia;
+    private String detalleAnomalia;
+    private Integer idMuestra;
+    private String sitio;                 // código y nombre del sitio de muestreo
 }

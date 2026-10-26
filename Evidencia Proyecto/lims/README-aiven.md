@@ -114,3 +114,10 @@ Salir:
   esté bien copiada.
 - La base de Aiven ya tiene esquema y datos: **no corras** el
   `01-schema.sql` contra ella ni la reinicialices.
+- **Versión 5:** el backend actual necesita que la base tenga las migraciones
+  `db-migrations/v4-dominio-ambiental.sql` y `db-migrations/v5-trazabilidad-sitios-ia.sql`
+  (en ese orden, una sola vez). Como la base es compartida, que **una sola persona**
+  las ejecute y avise al grupo. Con el cliente MySQL del contenedor:
+  `Get-Content db-migrations\v5-trazabilidad-sitios-ia.sql | docker exec -i lims-mysql mysql -h HOST -P PORT -u USUARIO -pCLAVE --ssl-mode=REQUIRED lims_db`
+- `db-migrations/datos-demo-v5.sql` es solo para la base **local**: no lo ejecuten en Aiven
+  sin acuerdo del equipo (crea muestras y usuarios de demostración).

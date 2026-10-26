@@ -55,9 +55,13 @@ lims/
 | `muestra_historial_estado` | Cada cambio de estado de la muestra (quién, cuándo, por qué) |
 | `analisis_catalogo` | Parámetros con su **rango normal** (mínimo, máximo, unidad, método/fuente) |
 | `muestra_analisis` | Parámetros solicitados para cada muestra |
-| `resultados` | Valor medido, si está dentro de rango y quién lo ingresó |
-| `aprobaciones` | Evaluación del supervisor (aprobado/rechazado y motivo) |
+| `resultados` | Valor **vigente** medido, si está dentro de rango, con qué **equipo** se midió, su **versión** y su **puntaje de anomalía** |
+| `resultado_versiones` | **v5** — cada versión de cada resultado (valor, equipo, quién, cuándo y **motivo del cambio**). Un dato nunca se sobrescribe sin rastro |
+| `aprobaciones` | Evaluación del supervisor (aprobado/rechazado y motivo) **de una versión concreta** del resultado |
 | `reportes` | Cada informe PDF emitido (con versión) |
+| `sitios_muestreo` | **v5** — sitios con **latitud/longitud**, tipo de ambiente y comuna (mapa y lista desplegable) |
+| `equipos` | **v5** — equipos con **fecha de calibración**; uno vencido no se puede usar para medir |
+| `ubicaciones_almacenamiento` | **v5** — congeladores, refrigeradores y estantes (lista desplegable) |
 
 ## Requisitos previos
 
@@ -155,7 +159,7 @@ Notas importantes para tus compañeros:
   SELECT * FROM centros;
   SELECT * FROM roles;
   ```
-- **Si tu base de datos ya existía** (no la recreaste desde cero), aplícale los cambios de esquema con los scripts de `lims-backend/db-migrations/` — ver la sección **Migración a la versión 4**. Si es muy antigua y le falta la columna `requiere_reset_password`, agrégala primero:
+- **Si tu base de datos ya existía** (no la recreaste desde cero), aplícale los cambios de esquema con los scripts de `lims-backend/db-migrations/` **en orden** — ver las secciones **Migración a la versión 4** y **Migración a la versión 5**. Si es muy antigua y le falta la columna `requiere_reset_password`, agrégala primero:
   ```sql
   ALTER TABLE usuarios ADD COLUMN requiere_reset_password BOOLEAN NOT NULL DEFAULT FALSE;
   ```
@@ -199,7 +203,22 @@ Verificación rápida: en el log debe aparecer `Started LimsBackendApplication` 
 | 3 – 6b | El admin crea parámetros del catálogo; la analista registra al **investigador**, la muestra (con almacenamiento y **firma de recepción**), firma un **traslado** en la cadena de custodia, asigna análisis e ingresa resultados |
 | 7 – 8c | El supervisor aprueba (la muestra pasa a *Aprobada*); aprobar dos veces da 400 |
 | 9 – 10 | Detalle con historial y custodia, y emisión del informe PDF dirigido al investigador (la muestra pasa a *Reportada*) |
+| 16 – 17, S6 | **v5**: sitios con coordenadas y equipos con estado de calibración; un analista no puede crear equipos (403) |
+| 18 – 23, S7 – S9 | **v5**: equipo con calibración vencida (400), vista previa de anomalía, **rechazo → corrección con motivo (versión 2) → aprobación**, y un resultado aprobado ya no se puede modificar (400) |
+| 24 – 27 | **v5**: trazabilidad completa, borrador de interpretación (IA o reglas), panel de inicio y tendencia |
 | 11 – 15 | Administración de usuarios: listar, reset de contraseña, desactivar y logout |
+
+> Verificado de punta a punta sobre una BD nueva (49 pasos, cada uno con el código HTTP esperado).
+
+### Datos de demostración (v5)
+
+`lims-backend/db-migrations/datos-demo-v5.sql` carga **8 meses de historial ambiental** (32 muestras ya informadas en 4 sitios, con clorofila-a, temperatura, salinidad, pH y oxígeno disuelto), una floración algal real documentada como valor alto, y 2 muestras recibidas (`D-2026-0001/0002`) para ingresar resultados en vivo. Sin historial no hay tendencias ni detección de anomalías, así que **ejecútenlo antes de una demo** (solo en la BD local):
+
+```powershell
+Get-Content db-migrations\datos-demo-v5.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+```
+
+Crea los usuarios de demostración `supervisor.demo` / `super123`, `analista.demo` / `analista123` y `admin` / `admin123` (si no existía). Es idempotente: si ya se cargó, no hace nada.
 
 ## 5. Levantar el cliente JavaFX
 
@@ -223,13 +242,16 @@ Al iniciar sesión, la ventana se agranda y aparece el **marco principal**: una 
 | Pantalla | Cómo se llega | Qué permite |
 |---|---|---|
 | Inicio de sesión / Crear usuario / Recuperar contraseña | Al abrir la app | Autenticarse contra el backend (RF06). *Crear usuario* siempre registra Analistas |
-| **Listado de muestras** (mockup 11.2) | Barra lateral → *Muestras* | Tabla con investigador, sitio y estado en etiquetas de color, **buscador en vivo** por código/investigador/sitio/tipo, doble clic para abrir el detalle |
-| **Registro de muestra** (mockup 11.3) | *+ Nueva muestra* | Investigador (con alta rápida), tipo ambiental, sitio y fecha de toma, condición, ubicación, *conservar hasta* y **firma de recepción** obligatoria |
-| **Detalle de muestra** | Doble clic o *Ver detalle* en el listado | Investigador, muestreo y almacenamiento; pestañas **Análisis solicitados** (asignar e ingresar resultados), **Historial de estados** y **Cadena de custodia** (firmar traslados, retiros y devoluciones) |
+| **Inicio** (v5) | Pantalla inicial al iniciar sesión | Indicadores (muestras, pendientes, fuera de rango, **atípicos**, tiempo hasta aprobación, equipos vencidos), **alertas de calidad** (doble clic abre la muestra) y **gráfico de tendencia** de un parámetro por sitio con su rango normal |
+| **Listado de muestras** (mockup 11.2) | Barra lateral → *Muestras* | Tabla con investigador, sitio y estado en etiquetas de color, **buscador en vivo** por código/investigador/sitio/tipo, doble clic para abrir el detalle. Las más recientes primero |
+| **Registro de muestra** (mockup 11.3) | *+ Nueva muestra* | Investigador (con alta rápida), tipo ambiental, **sitio del catálogo** (con alta rápida) y punto exacto, fecha de toma, **condición y ubicación desde listas desplegables**, *conservar hasta* y **firma de recepción** obligatoria |
+| **Detalle de muestra** | Doble clic o *Ver detalle* en el listado | Investigador, sitio con coordenadas y almacenamiento; pestañas **Análisis solicitados** (asignar, ingresar, **corregir** y **ver versiones**), **Trazabilidad completa** (línea de tiempo de la muestra y de cada dato), **Historial de estados** y **Cadena de custodia**. Botón **Interpretación (IA)** para Supervisor/Administrador |
+| **Sitios y mapa** (v5) | Barra lateral → *Sitios y mapa* | **Mapa** (OpenStreetMap) con los sitios coloreados según sus resultados, y tabla. Clic en el mapa = registrar un sitio en ese punto |
+| **Equipos y almacenamiento** (v5) | Barra lateral → *Equipos y almacenamiento* | Equipos con **estado de calibración** (Vigente / Por vencer / Vencida) y ubicaciones de almacenamiento. Solo el Administrador edita |
 | **Investigadores** | Barra lateral → *Investigadores* | Registrar, editar y activar/desactivar investigadores |
 | **Parámetros y rangos** | Barra lateral → *Parámetros y rangos* | **Tabla explícita de rangos normales** por parámetro (mínimo, máximo, unidad, método/fuente). Solo el Administrador la modifica |
-| **Ingreso de resultado** (mockup 11.4) | Detalle → seleccionar análisis → *Ingresar resultado* | Diálogo que avisa **en vivo** si el valor está fuera de rango y exige observaciones (RF02/RF03). Acepta coma decimal (`7,2`) |
-| **Aprobación de resultados** (mockup 11.5) | Barra lateral → *Aprobaciones* | Tabla de resultados pendientes + panel de revisión con botones **Aprobar** / **Rechazar** (comentario obligatorio al rechazar) (RF04) |
+| **Ingreso / corrección de resultado** (mockup 11.4) | Detalle → seleccionar análisis → *Ingresar resultado* o *Corregir resultado* | Avisa **en vivo** si el valor está fuera de rango (RF03) y si es **atípico para el sitio** (v5); exige el **equipo calibrado**. La corrección crea la **versión siguiente** y exige el motivo del cambio. Acepta coma decimal (`7,2`) |
+| **Aprobación de resultados** (mockup 11.5) | Barra lateral → *Aprobaciones* | Tabla de resultados pendientes (marca versión y **Atípico**) + panel de revisión con equipo y calibración. **Aprobar** / **Rechazar** (comentario obligatorio al rechazar y al aprobar un atípico) (RF04) |
 | **Informe PDF** (mockup 11.6) | Detalle de una muestra Aprobada → *Generar informe PDF* | Emite el informe y permite **ver la vista previa** (se abre en el visor de PDF del sistema) o **guardarlo como…** (RF05) |
 | **Administración de usuarios** | Barra lateral → *Usuarios* (solo Administrador) | Crear usuarios con rol, resetear contraseñas (las solicitudes de "¿Olvidaste tu contraseña?" aparecen marcadas) y activar/desactivar cuentas (RF06) |
 
@@ -237,14 +259,13 @@ Al iniciar sesión, la ventana se agranda y aparece el **marco principal**: una 
 
 | Opción | Analista | Supervisor | Administrador |
 |---|:-:|:-:|:-:|
-| Muestras (listado, registro, detalle, ingreso de resultados, custodia) | ✅ | ✅ | ✅ |
-| Investigadores | ✅ | ✅ | ✅ |
-| Parámetros y rangos (ver) / (editar) | ✅ / — | ✅ / — | ✅ / ✅ |
-| Aprobaciones | — | ✅ | ✅ |
-| Botón *Generar informe PDF* en el detalle | — | ✅ | ✅ |
+| Inicio (indicadores, alertas y tendencias) | ✅ | ✅ | ✅ |
+| Muestras (listado, registro, detalle, ingreso y corrección de resultados, custodia, trazabilidad) | ✅ | ✅ | ✅ |
+| Investigadores · Sitios y mapa | ✅ | ✅ | ✅ |
+| Parámetros y rangos · Equipos y almacenamiento (ver) / (editar) | ✅ / — | ✅ / — | ✅ / ✅ |
+| Aprobaciones · Reportes | — | ✅ | ✅ |
+| Botones *Interpretación (IA)* y *Generar informe PDF* en el detalle | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ |
-
-Las opciones *Reportes y Configuración* aparecen deshabilitadas ("próximamente").
 
 ### Estructura del cliente (lo más importante)
 
@@ -253,6 +274,8 @@ Las opciones *Reportes y Configuración* aparecen deshabilitadas ("próximamente
 - `model/` — modelos del cliente. Los nuevos son `record` de Java 21 (`MuestraDetalle`, `AnalisisCatalogo`, `ResultadoPendiente`, etc.): se accede con `nombre()` en vez de `getNombre()`.
 - `ui/Badges.java` — etiquetas de color para estados, roles y controles (se usan en las tablas con `col.setCellFactory(c -> Badges.celda())`).
 - `ui/Formularios.java` — arma los diálogos con formulario (investigador, parámetro, custodia, usuario) con el estilo de la app.
+- `ui/FormularioSitio.java` — diálogo de alta/edición de un sitio (lo usan *Sitios y mapa* y *Registro de muestra*).
+- `resources/.../mapa.html` — mapa Leaflet + OpenStreetMap que `SitiosController` carga en un `WebView` (requiere internet; sin conexión la tabla sigue funcionando).
 - `styles.css` — tema completo de la app (barra lateral, tablas, botones, etiquetas). Los estilos del login están al inicio del archivo y el tema de la app al final.
 
 ## 6. Módulos y endpoints del backend (API REST)
@@ -305,15 +328,16 @@ Es la "tabla de rangos" contra la que se valida cada resultado; en el cliente se
   y la muestra avanza a "En analisis" (o a "Resultados ingresados" si ya todos
   sus análisis tienen resultado).
 - `GET  /api/resultados` — lista todos los resultados.
-- `GET  /api/resultados?pendientes=true` — solo los resultados que **aún no tienen evaluación** del supervisor (alimenta la pantalla de Aprobaciones).
+- `GET  /api/resultados?pendientes=true` — solo los resultados cuya **versión vigente** aún no tiene evaluación del supervisor (alimenta la pantalla de Aprobaciones).
+- v5: además exige el equipo, calcula el puntaje de anomalía y permite **corregir** creando versiones (ver la sección *v5* más abajo).
 
 ### Aprobación de resultados (RF04)
 - `POST /api/aprobaciones` — aprueba o rechaza un resultado
   (`estadoAprobacion`: "Aprobado" / "Rechazado"). Reglas que valida el backend:
   - Solo puede evaluar un usuario con rol **Supervisor** o **Administrador**.
   - **Nadie puede evaluar un resultado que él mismo ingresó** (segregación de funciones, ISO 17025).
-  - Un resultado se evalúa **una sola vez** (no se permiten aprobaciones duplicadas).
-  - Un rechazo exige `comentario`.
+  - Cada **versión** de un resultado se evalúa **una sola vez** (no se permiten aprobaciones duplicadas); tras un rechazo, la corrección crea una versión nueva que se vuelve a evaluar.
+  - Un rechazo exige `comentario`, y también aprobar un resultado marcado como **atípico** (v5).
 
   Al evaluar, la muestra pasa a "Rechazada" ante un rechazo, o a "Aprobada"
   cuando todos sus análisis quedan aprobados (si aún faltan, conserva su estado).
@@ -322,7 +346,8 @@ Es la "tabla de rangos" contra la que se valida cada resultado; en el cliente se
 
 ```
 Recibida ──(1er resultado)──► En analisis ──(todos con resultado)──► Resultados ingresados ──(todos aprobados)──► Aprobada ──(informe PDF)──► Reportada
-                                                                                         └──(un rechazo)──────► Rechazada
+                                                                            ▲                 └──(un rechazo)──► Rechazada
+                                                                            └────(el analista corrige: versión nueva con motivo)────┘
 ```
 
 Todo cambio de estado pasa por `EstadoMuestraService`, que actualiza la muestra **y** registra una fila en
@@ -331,7 +356,36 @@ El historial se consulta en `GET /api/muestras/{id}` y se ve en la pestaña *His
 
 > Las muestras creadas antes de este cambio no tienen historial (la tabla ya existía en el esquema, solo que nadie la llenaba).
 >
-> **Pendiente (decisión del equipo):** qué hacer después de un rechazo. Hoy un rechazo deja la muestra en *Rechazada* de forma definitiva; falta definir el flujo de reingreso/corrección del resultado.
+> **Después de un rechazo (v5):** el analista corrige el resultado (*Corregir resultado*): se crea la versión 2 con el motivo, el valor anterior se conserva, la muestra vuelve a revisión y el supervisor evalúa la nueva versión.
+
+### v5 — Trazabilidad del dato, sitios, equipos, anomalías e IA
+
+**Sitios, equipos y ubicaciones** (catálogos; antes eran texto libre):
+- `GET /api/sitios?activos=` · `POST /api/sitios` · `PUT /api/sitios/{id}` · `PATCH /api/sitios/{id}/estado?activo=` — `latitud` y `longitud` en grados decimales (sur/oeste negativos), `tipoAmbiente` (*Marino costero, Estuario, Lago, Río, Humedal, Otro*). Sin `codigo` se genera `ST-007`, `ST-008`… La lista incluye un resumen por sitio (muestras, fuera de rango, atípicos, último muestreo) para el mapa. Cualquier usuario con sesión.
+- `GET /api/equipos?activos=` · `POST` · `PUT /{id}` · `PATCH /{id}/estado` — con `fechaUltimaCalibracion` / `fechaProximaCalibracion`; la respuesta trae `estadoCalibracion` (*Vigente, Por vencer* —30 días—, *Vencida, Sin registro*). Escritura solo **Administrador**.
+- `GET /api/ubicaciones?activas=` · `POST` · `PUT /{id}` · `PATCH /{id}/estado` — ubicaciones de almacenamiento. Escritura solo **Administrador**.
+- `POST /api/muestras` ahora exige `idSitio`; `procedencia` pasa a ser el **punto exacto** opcional (se guarda como "Sitio — punto").
+
+**Resultados versionados (nunca se sobrescribe un dato):**
+- `POST /api/resultados` exige `idEquipo`: el equipo debe estar activo y con la **calibración vigente** (si no, 400). Calcula además el **puntaje de anomalía** (ver abajo). Queda como versión 1.
+- `PUT /api/resultados/{id}` — **corrige** un resultado: `valorResultado`, `idEquipo`, `observaciones` y `motivoCambio` (obligatorio). Crea la **versión siguiente** y guarda la anterior en `resultado_versiones`. Prohibido si el resultado ya fue **aprobado** o la muestra fue **informada** (400). Si la muestra estaba *Rechazada* y no quedan rechazos sin corregir, vuelve a *Resultados ingresados* (o *En análisis*) y el resultado regresa a la bandeja del supervisor.
+- `GET /api/resultados/{id}/versiones` — todas las versiones, cada una con la evaluación que recibió.
+- `GET /api/resultados/anomalia?idMuestraAnalisis=&valor=[&idResultado=]` — vista previa de la detección de anomalías (no guarda nada); el cliente la usa en vivo.
+- `GET /api/resultados?pendientes=true` ahora significa "la **versión vigente** aún no tiene evaluación".
+
+**Detección de anomalías (IA estadística).** Compara el valor con el historial del **mismo parámetro en el mismo sitio** (si hay menos de 5 resultados, con el mismo tipo de muestra) usando el **puntaje z modificado** de Iglewicz y Hoaglin: `z = 0,6745 · (x − mediana) / MAD`; es atípico si `|z| > 3,5`. Es un método robusto: la mediana y la MAD no se dejan arrastrar por los propios atípicos del historial. Detecta lo que el rango normal no ve (un valor *dentro* del rango puede ser muy raro para ese sitio). No bloquea el ingreso: avisa al analista, se destaca al supervisor (que debe comentar para aprobarlo), aparece en el panel de alertas y en el informe. Código: `AnomaliaService`.
+
+**Trazabilidad completa:** `GET /api/muestras/{id}/trazabilidad` — línea de tiempo ordenada: toma en terreno (sitio y coordenadas), registro, custodia, análisis solicitados, **cada versión de cada resultado** (equipo y calibración, rango, atípico, motivo), aprobaciones y rechazos **por versión**, cambios de estado, interpretación e informes emitidos. Código: `TrazabilidadService`.
+
+**Interpretación del informe asistida por IA** (solo Supervisor/Administrador):
+- `POST /api/muestras/{id}/interpretacion/borrador` — genera un **borrador** (no guarda nada). Si el backend tiene la variable de entorno `ANTHROPIC_API_KEY`, lo redacta **Claude** (modelo `claude-opus-5-5`, SDK oficial `com.anthropic:anthropic-java`) a partir de los resultados, rangos y atípicos; si no la tiene, si el servicio falla o si declina la solicitud, se genera un borrador **por reglas**. La respuesta indica el origen y el motivo del respaldo.
+- `PUT /api/muestras/{id}/interpretacion` — guarda el texto **revisado** con su origen (`IA revisada`, `Reglas revisadas` o `Manual`). El informe PDF lo incluye con la nota "generado con IA y revisado y validado por …". Código: `InterpretacionService`.
+
+**Panel de inicio:** `GET /api/dashboard` (indicadores y alertas) y `GET /api/dashboard/tendencia?idAnalisis=&idSitio=` (serie del parámetro con su rango normal).
+
+**Informe PDF (v5):** sitio con código y coordenadas, columna **Equipo** con su calibración, versión del resultado (`23.6 (v2)`), atípicos en *Observaciones*, sección **Interpretación de resultados** y sección **Historial de correcciones de resultados**.
+
+**Errores de validación:** cualquier `@Valid` que falle responde 400 con un texto legible (ej. `el motivo del cambio es obligatorio`), no con el JSON técnico de Spring (`ErroresValidacionHandler`).
 
 ### Usuarios y autenticación (RF06)
 
@@ -362,7 +416,11 @@ Solo **Administrador**:
 | Registrar muestra, asignar análisis, ingresar resultado | ✅ | ✅ | ✅ |
 | Aprobar / rechazar resultados (`POST /api/aprobaciones`) | ❌ | ✅ | ✅ |
 | Emitir informe PDF (`POST /api/muestras/{id}/reporte`) | ❌ | ✅ | ✅ |
+| Corregir un resultado no aprobado (versión nueva con motivo) | ✅ | ✅ | ✅ |
+| Registrar sitios de muestreo | ✅ | ✅ | ✅ |
+| Interpretación del informe (borrador IA y guardar) | ❌ | ✅ | ✅ |
 | Crear / editar / desactivar análisis del catálogo | ❌ | ❌ | ✅ |
+| Crear / editar equipos (calibración) y ubicaciones | ❌ | ❌ | ✅ |
 | Administrar usuarios y contraseñas | ❌ | ❌ | ✅ |
 
 ## Migración a la versión 4 (dominio ambiental)
@@ -377,6 +435,23 @@ Get-Content db-migrations\v4-dominio-ambiental.sql | docker exec -i lims-mysql m
 El script crea `investigadores` y `custodia_eventos`, agrega `muestras.id_investigador` y convierte los tipos de muestra antiguos (*Agua potable/residual → Agua dulce*, *Suelo → Sedimento*, *Sangre/Alimento → Otro*). Sin esta migración el backend falla al leer muestras (`Unknown column 'id_investigador'` o *Tipo de muestra no válido*).
 
 Después, en la pantalla **Parámetros y rangos** (como admin), **desactiven los análisis clínicos de prueba** (hemograma, glucosa, colesterol…) y carguen los parámetros ambientales con su fuente.
+
+## Migración a la versión 5 (trazabilidad, sitios, equipos e IA)
+
+Para una **BD existente que ya tiene la v4**, ejecuten **una vez** `lims-backend/db-migrations/v5-trazabilidad-sitios-ia.sql`:
+
+```powershell
+cd lims-backend
+Get-Content db-migrations\v5-trazabilidad-sitios-ia.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+```
+
+Crea `sitios_muestreo`, `equipos`, `ubicaciones_almacenamiento` y `resultado_versiones` (los resultados existentes quedan como su versión 1), agrega `muestras.id_sitio` y las columnas de interpretación, `resultados.id_equipo`/`version`/anomalía y `aprobaciones.version_resultado`, y carga 6 sitios de la Región de Los Lagos, 5 equipos (uno con la calibración vencida, para la demo) y 5 ubicaciones. Sin esta migración el backend falla con `Unknown column 'id_sitio'` (o `id_equipo`, `version_resultado`).
+
+> El script empieza con `SET NAMES utf8mb4`: sin eso, el cliente `mysql` del contenedor lee las tildes como latin1 y los nombres quedan como `BahÃ­a`. Las muestras anteriores a v5 quedan **sin sitio** (siguen mostrando su texto de procedencia) y sus resultados **sin equipo**.
+
+### Configurar la IA (opcional)
+
+El borrador de interpretación usa Claude solo si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY` (en IntelliJ: *Edit Configurations → Environment variables*; **nunca** en `application.properties` ni en git). Sin ella todo funciona igual con el borrador por reglas, y el log del backend lo indica al arrancar (`IA: sin ANTHROPIC_API_KEY…`).
 
 ## Problemas comunes
 
@@ -409,25 +484,31 @@ Después, en la pantalla **Parámetros y rangos** (como admin), **desactiven los
 - **403 al aprobar o 400 "No puedes evaluar un resultado que tú mismo ingresaste"**: no es un error, son las reglas de RF04/RF06. Para probar el flujo completo se necesitan dos usuarios: un **Analista** que ingresa el resultado y un **Supervisor** distinto que lo aprueba (ver `test.http`).
 - **Errores de compilación por paquete no encontrado**: confirmar que el paquete base sea `com.duoc.lims.limsbackend` (backend) y `com.duoc.lims.limsclient` (cliente) en todas las clases — un error de tipeo aquí genera decenas de errores en cadena.
 - **VS Code marca en rojo `getNombre()`, `setApellido()`, etc. como "cannot find symbol" en una entidad (`Usuario`, `Rol`, `Centro`)**: es un falso positivo del Language Server de Java, que no reconoce los getters/setters generados por Lombok (`@Getter`/`@Setter`). No afecta la compilación real con Maven. Se puede limpiar con `Ctrl+Shift+P` → "Java: Clean Java Language Server Workspace", o instalando la extensión "Lombok Annotations Support for VS Code".
+- **`Unknown column 'id_sitio'` / `'id_equipo'` / `'version_resultado'`**: tu BD es anterior a la v5. Ejecuta `db-migrations/v5-trazabilidad-sitios-ia.sql` (sección *Migración a la versión 5*).
+- **Nombres con `Ã¡`, `Ã­`, `Â°` (tildes rotas) en sitios, equipos o ubicaciones**: el script se ejecutó sin `SET NAMES utf8mb4` (versión antigua del script). Repárenlo con `UPDATE tabla SET col = CONVERT(CAST(CONVERT(col USING latin1) AS BINARY) USING utf8mb4)` solo en las filas afectadas, o recreen la BD.
+- **400 "idEquipo es obligatorio" o "tiene la calibración vencida"**: desde la v5 cada resultado indica con qué equipo se midió, y ese equipo debe estar calibrado. El Administrador actualiza las fechas en *Equipos y almacenamiento*.
+- **400 "un dato aprobado no se puede modificar"**: es la regla de trazabilidad (ISO/IEC 17025). Solo se corrigen resultados pendientes o rechazados.
+- **El mapa de *Sitios y mapa* sale en blanco**: el mapa (Leaflet/OpenStreetMap) necesita internet. La tabla de sitios funciona igual.
+- **No aparecen tendencias ni atípicos**: la detección necesita al menos 5 resultados previos del parámetro en el sitio. Para la demo carguen `db-migrations/datos-demo-v5.sql`.
 
 ## Estado de los requisitos funcionales
 
 | Requisito | Backend | Cliente JavaFX |
 |---|---|---|
 | **RF01** Registro de muestras | ✅ Con investigador, sitio y fecha de toma, almacenamiento y firma de recepción | ✅ Listado (con buscador) + registro + detalle con custodia |
-| **RF02** Ingreso de resultados | ✅ | ✅ Asignación de análisis + diálogo de ingreso |
-| **RF03** Validación de rangos | ✅ | ✅ Aviso en vivo y observaciones obligatorias |
-| **RF04** Aprobación por supervisor | ✅ Con reglas de rol, segregación y evaluación única | ✅ Pantalla de Aprobaciones |
-| **RF05** Reporte PDF | ✅ OpenPDF, versionado y registro en `reportes` | ✅ Generar, vista previa y guardar |
+| **RF02** Ingreso de resultados | ✅ Con equipo calibrado y versiones (corrección con motivo) | ✅ Asignación de análisis + ingreso + corrección + versiones |
+| **RF03** Validación de rangos | ✅ + detección de valores atípicos por sitio | ✅ Aviso en vivo (rango y atípico) y observaciones obligatorias |
+| **RF04** Aprobación por supervisor | ✅ Con reglas de rol, segregación y evaluación única por versión | ✅ Pantalla de Aprobaciones con versión, equipo y atípicos |
+| **RF05** Reporte PDF | ✅ OpenPDF, versionado, equipo, correcciones e interpretación revisada | ✅ Generar, vista previa, guardar e interpretación (IA) |
 | **RF06** Autenticación con roles | ✅ Sesión con token, permisos por rol en `SecurityConfig`, usuario tomado de la sesión, registro público solo como Analista | ✅ Token en todas las peticiones, vuelta al login si expira, barra lateral por rol y pantalla de Usuarios |
 
-Además: historial de estados de la muestra (ISO 17025) ✅ · **investigadores, almacenamiento y cadena de custodia firmada (v4)** ✅ · **tabla de rangos normales visible** ✅.
+Además: historial de estados de la muestra (ISO 17025) ✅ · **investigadores, almacenamiento y cadena de custodia firmada (v4)** ✅ · **tabla de rangos normales visible** ✅ · **v5:** trazabilidad completa del dato, sitios georreferenciados con mapa, equipos con calibración, catálogos desplegables, detección de anomalías, interpretación asistida por IA y panel de inicio ✅.
 
 ### Próximos pasos
 
-1. Definir el flujo después de un **rechazo** (reingreso o corrección del resultado).
-2. Pruebas JUnit de los servicios.
-3. Cargar en el catálogo los **parámetros reales de algas** (clorofila-a, salinidad, pH, temperatura, nutrientes) con su rango y **fuente** (tarea de QA/documentación).
+1. Pruebas JUnit de los servicios (prioridad: `AnomaliaService`, `ResultadoService.corregir`, `AprobacionService`).
+2. Validar con la investigadora los **rangos reales** de los parámetros de algas y registrar su **fuente** en `metodoReferencia` (los de `datos-demo-v5.sql` son referenciales).
+3. Código QR en la etiqueta de la muestra y en el informe que lleve a su trazabilidad.
 4. Instalador (`.exe`/`.jar`), video demo y actualización del informe técnico.
 
 ## Estado del proyecto (seguridad)
@@ -475,7 +556,8 @@ Resumen:
    Sin el perfil (`.\mvnw.cmd spring-boot:run`) el backend usa la BD **local** de Docker.
 
 > - La base de Aiven ya tiene esquema y datos: **no correr** `01-schema.sql`
->   contra ella. Para ponerla al día ejecuten **una vez** `db-migrations/v4-dominio-ambiental.sql`
+>   contra ella. Para ponerla al día ejecuten **una vez y en orden** `db-migrations/v4-dominio-ambiental.sql`
+>   y `db-migrations/v5-trazabilidad-sitios-ia.sql` (coordínenlo: es la base de todo el equipo)
 >   (y, si su esquema es muy antiguo, antes el `ALTER TABLE usuarios ADD COLUMN requiere_reset_password ...`
 >   de la sección 2). Como Aiven ya tiene usuarios, el admin inicial no se crea: asignen el rol
 >   Administrador a un usuario existente con `UPDATE usuarios SET id_rol = 1 WHERE username = '...';`
