@@ -14,6 +14,8 @@
             <Label text="Datos de recepción, análisis solicitados y resultados" styleClass="page-subtitle"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
+        <Button fx:id="btnEtiqueta" text="Imprimir etiqueta" styleClass="btn-secondary"
+                onAction="#onImprimirEtiqueta" disable="true"/>
         <Button fx:id="btnInterpretacion" text="Interpretación (IA)" styleClass="btn-secondary"
                 onAction="#onInterpretacion"/>
         <Button fx:id="btnReporte" text="Generar informe PDF" styleClass="btn-primary"

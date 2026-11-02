@@ -31,6 +31,12 @@
             <artifactId>javafx-web</artifactId>
             <version>21.0.6</version>
         </dependency>
+        <!-- Etiqueta de muestra 50 x 25 mm: generación del código QR -->
+        <dependency>
+            <groupId>com.google.zxing</groupId>
+            <artifactId>core</artifactId>
+            <version>3.5.3</version>
+        </dependency>
 
         <dependency>
             <groupId>org.junit.jupiter</groupId>

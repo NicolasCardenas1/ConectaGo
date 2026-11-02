@@ -3,11 +3,13 @@ package com.duoc.lims.limsclient.controller;
 import com.duoc.lims.limsclient.Navigator;
 import com.duoc.lims.limsclient.model.Investigador;
 import com.duoc.lims.limsclient.model.InvestigadorRequest;
+import com.duoc.lims.limsclient.model.Muestra;
 import com.duoc.lims.limsclient.model.MuestraRequest;
 import com.duoc.lims.limsclient.model.Sitio;
 import com.duoc.lims.limsclient.model.Ubicacion;
 import com.duoc.lims.limsclient.ui.FormularioSitio;
 import com.duoc.lims.limsclient.service.ApiClient;
+import com.duoc.lims.limsclient.ui.EtiquetaMuestra;
 import com.duoc.lims.limsclient.ui.Formularios;
 import javafx.application.Platform;
 import javafx.collections.FXCollections;
@@ -201,8 +203,14 @@ public class RegistroMuestraController {
 
         Thread hilo = new Thread(() -> {
             try {
-                apiClient.crearMuestra(datos);
-                Platform.runLater(Navigator::irAListado);
+                Muestra creada = apiClient.crearMuestra(datos);
+                Platform.runLater(() -> {
+                    // Etiqueta para el envase: se ofrece imprimirla apenas queda registrada la muestra.
+                    EtiquetaMuestra.ofrecerImpresion(creada, btnGuardar.getScene().getWindow(),
+                            btnGuardar.getScene().getStylesheets(), "Muestra registrada",
+                            "Muestra " + creada.getCodigoUnico() + " registrada", "Ahora no");
+                    Navigator.irAListado();
+                });
             } catch (Exception e) {
                 Platform.runLater(() -> {
                     lblEstado.setText("Error al guardar: " + e.getMessage());

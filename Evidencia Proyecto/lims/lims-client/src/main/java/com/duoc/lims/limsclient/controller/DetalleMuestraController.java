@@ -19,6 +19,7 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
+import com.duoc.lims.limsclient.ui.EtiquetaMuestra;
 import com.duoc.lims.limsclient.ui.Formularios;
 import javafx.event.ActionEvent;
 import javafx.scene.control.CheckBox;
@@ -93,6 +94,7 @@ public class DetalleMuestraController {
     @FXML private Button btnAgregar;
     @FXML private Button btnReporte;
     @FXML private Button btnInterpretacion;
+    @FXML private Button btnEtiqueta;
     @FXML private VBox contenedorTraza;
     @FXML private Label lblResumenTraza;
     private Muestra muestraActual;
@@ -656,9 +658,21 @@ public class DetalleMuestraController {
         hilo.start();
     }
 
+    /** Reimprime la etiqueta 50 x 25 mm del envase (por ejemplo, si se dañó o cambió la ubicación). */
+    @FXML
+    private void onImprimirEtiqueta() {
+        if (muestraActual == null) {
+            return;
+        }
+        EtiquetaMuestra.ofrecerImpresion(muestraActual, btnEtiqueta.getScene().getWindow(),
+                btnEtiqueta.getScene().getStylesheets(), "Imprimir etiqueta",
+                "Etiqueta de la muestra " + muestraActual.getCodigoUnico(), "Cancelar");
+    }
+
     private void mostrarDetalle(MuestraDetalle detalle) {
         Muestra m = detalle.muestra();
         muestraActual = m;
+        btnEtiqueta.setDisable(false);
         lblTitulo.setText("Muestra " + m.getCodigoUnico());
         codigoMuestra = m.getCodigoUnico();
         // v5: la interpretación (borrador IA) la redacta un Supervisor o Administrador
