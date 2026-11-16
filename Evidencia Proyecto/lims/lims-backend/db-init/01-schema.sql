@@ -33,6 +33,10 @@
 -- y no una migración de esquema.
 -- =====================================================================
 
+-- El contenedor de MySQL ejecuta este script con el cliente en latin1: sin esta línea los
+-- textos con tildes o símbolos (°, ·, á) de los datos iniciales quedan como "Â°", "Ã¡".
+SET NAMES utf8mb4;
+
 CREATE DATABASE IF NOT EXISTS lims_db
     CHARACTER SET utf8mb4
     COLLATE utf8mb4_unicode_ci;
@@ -160,6 +164,7 @@ CREATE TABLE sitios_muestreo (
 
 -- Equipos con su calibración: cada resultado indica con qué equipo se midió
 -- y el backend impide usar un equipo con la calibración vencida (ISO 17025).
+-- v6: también los equipos de terreno (uso) con que se TOMAN las muestras.
 CREATE TABLE equipos (
     id_equipo                 INT AUTO_INCREMENT PRIMARY KEY,
     codigo                    VARCHAR(30)  NOT NULL UNIQUE,   -- ej. EQ-001 (etiqueta física del equipo)
@@ -167,10 +172,30 @@ CREATE TABLE equipos (
     marca                     VARCHAR(80),
     modelo                    VARCHAR(80),
     numero_serie              VARCHAR(80),
-    fecha_ultima_calibracion  DATE NULL,
+    uso                       VARCHAR(20)  NOT NULL DEFAULT 'Laboratorio',  -- v6: Terreno / Laboratorio / Ambos
+    fecha_ultima_calibracion  DATE NULL,                      -- calibración vigente (última fila del historial)
     fecha_proxima_calibracion DATE NULL,                      -- vencida = no se puede usar
     activo                    BOOLEAN NOT NULL DEFAULT TRUE,
-    fecha_creacion            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    fecha_creacion            DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT chk_equipo_uso CHECK (uso IN ('Terreno', 'Laboratorio', 'Ambos'))
+) ENGINE=InnoDB;
+
+-- v6: historial de calibraciones. Cada calibración es una fila nueva (nunca se sobrescribe),
+-- así se puede demostrar qué calibración estaba vigente cuando se usó el equipo.
+CREATE TABLE equipo_calibraciones (
+    id_calibracion     INT AUTO_INCREMENT PRIMARY KEY,
+    id_equipo          INT NOT NULL,
+    fecha_calibracion  DATE NOT NULL,
+    fecha_vencimiento  DATE NOT NULL,
+    realizada_por      VARCHAR(120),                  -- laboratorio o técnico que calibró
+    certificado        VARCHAR(80),                   -- N° del certificado de calibración
+    observaciones      VARCHAR(255),
+    id_usuario         INT NULL,                      -- quién la registró en el sistema
+    fecha_registro     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_cal_equipo  FOREIGN KEY (id_equipo)  REFERENCES equipos(id_equipo),
+    CONSTRAINT fk_cal_usuario FOREIGN KEY (id_usuario) REFERENCES usuarios(id_usuario),
+    CONSTRAINT chk_cal_fechas CHECK (fecha_vencimiento >= fecha_calibracion),
+    INDEX idx_cal_equipo (id_equipo)
 ) ENGINE=InnoDB;
 
 -- Ubicaciones físicas de almacenamiento (lista desplegable en vez de texto libre).
@@ -195,6 +220,7 @@ CREATE TABLE muestras (
                              NOT NULL DEFAULT 'Otro',
     procedencia             VARCHAR(150),                  -- nombre del sitio (copia legible; antes de v5, texto libre)
     id_sitio                INT NULL,                      -- v5: sitio de muestreo georreferenciado
+    id_equipo_toma          INT NULL,                      -- v6: equipo con que se tomó en terreno
     id_investigador         INT NULL,                      -- investigador que encarga el muestreo (destinatario del informe)
     id_usuario_registro     INT NOT NULL,                  -- quién la ingresó al sistema
     fecha_toma              DATETIME NULL,                 -- cuándo se tomó la muestra
@@ -220,6 +246,7 @@ CREATE TABLE muestras (
     fecha_interpretacion      DATETIME NULL,
     CONSTRAINT fk_muestra_usuario FOREIGN KEY (id_usuario_registro) REFERENCES usuarios(id_usuario),
     CONSTRAINT fk_muestra_sitio   FOREIGN KEY (id_sitio) REFERENCES sitios_muestreo(id_sitio),
+    CONSTRAINT fk_muestra_equipo_toma FOREIGN KEY (id_equipo_toma) REFERENCES equipos(id_equipo),
     CONSTRAINT fk_muestra_usuario_interp FOREIGN KEY (id_usuario_interpretacion) REFERENCES usuarios(id_usuario),
     CONSTRAINT fk_muestra_centro  FOREIGN KEY (id_centro) REFERENCES centros(id_centro),
     CONSTRAINT fk_muestra_investigador FOREIGN KEY (id_investigador) REFERENCES investigadores(id_investigador),
@@ -420,12 +447,23 @@ INSERT INTO sitios_muestreo (codigo, nombre, latitud, longitud, tipo_ambiente, c
     ('ST-005', 'Estuario río Maullín',               -41.611000, -73.598000, 'Estuario',       'Maullín',      'Los Lagos', 'Desembocadura del río Maullín'),
     ('ST-006', 'Lago Llanquihue, Puerto Varas',      -41.317600, -72.983100, 'Lago',           'Puerto Varas', 'Los Lagos', 'Costanera, muestreo de agua dulce');
 
-INSERT INTO equipos (codigo, nombre, marca, modelo, numero_serie, fecha_ultima_calibracion, fecha_proxima_calibracion) VALUES
-    ('EQ-001', 'pHmetro de sobremesa',      'Hanna Instruments', 'HI5221',       'HI5221-0457', DATE_SUB(CURDATE(), INTERVAL 2 MONTH),  DATE_ADD(CURDATE(), INTERVAL 4 MONTH)),
-    ('EQ-002', 'Fluorómetro (clorofila-a)', 'Turner Designs',    'Trilogy',      'TR-7200-118', DATE_SUB(CURDATE(), INTERVAL 1 MONTH),  DATE_ADD(CURDATE(), INTERVAL 5 MONTH)),
-    ('EQ-003', 'Sonda multiparámetro',      'YSI',               'ProDSS',       'PD-19K10442', DATE_SUB(CURDATE(), INTERVAL 5 MONTH),  DATE_ADD(CURDATE(), INTERVAL 20 DAY)),
-    ('EQ-004', 'Espectrofotómetro UV-Vis',  'Hach',              'DR6000',       'DR6-1803344', DATE_SUB(CURDATE(), INTERVAL 3 MONTH),  DATE_ADD(CURDATE(), INTERVAL 3 MONTH)),
-    ('EQ-005', 'Balanza analítica',         'Sartorius',         'Quintix 125D', 'SQ-3302871',  DATE_SUB(CURDATE(), INTERVAL 13 MONTH), DATE_SUB(CURDATE(), INTERVAL 1 MONTH));
+INSERT INTO equipos (codigo, nombre, marca, modelo, numero_serie, uso, fecha_ultima_calibracion, fecha_proxima_calibracion) VALUES
+    ('EQ-001', 'pHmetro de sobremesa',          'Hanna Instruments',  'HI5221',       'HI5221-0457',  'Laboratorio', DATE_SUB(CURDATE(), INTERVAL 2 MONTH),  DATE_ADD(CURDATE(), INTERVAL 4 MONTH)),
+    ('EQ-002', 'Fluorómetro (clorofila-a)',     'Turner Designs',     'Trilogy',      'TR-7200-118',  'Laboratorio', DATE_SUB(CURDATE(), INTERVAL 1 MONTH),  DATE_ADD(CURDATE(), INTERVAL 5 MONTH)),
+    ('EQ-003', 'Sonda multiparámetro',          'YSI',                'ProDSS',       'PD-19K10442',  'Ambos',       DATE_SUB(CURDATE(), INTERVAL 5 MONTH),  DATE_ADD(CURDATE(), INTERVAL 20 DAY)),
+    ('EQ-004', 'Espectrofotómetro UV-Vis',      'Hach',               'DR6000',       'DR6-1803344',  'Laboratorio', DATE_SUB(CURDATE(), INTERVAL 3 MONTH),  DATE_ADD(CURDATE(), INTERVAL 3 MONTH)),
+    ('EQ-005', 'Balanza analítica',             'Sartorius',          'Quintix 125D', 'SQ-3302871',   'Laboratorio', DATE_SUB(CURDATE(), INTERVAL 13 MONTH), DATE_SUB(CURDATE(), INTERVAL 1 MONTH)),
+    -- v6: equipos de terreno (toma de muestras)
+    ('EQ-006', 'Botella Niskin 5 L',            'General Oceanics',   '1010-5',       'GO-1010-2291', 'Terreno',     NULL, NULL),
+    ('EQ-007', 'GPS de mano',                   'Garmin',             'GPSMAP 67',    'GM67-4410873', 'Terreno',     DATE_SUB(CURDATE(), INTERVAL 4 MONTH),  DATE_ADD(CURDATE(), INTERVAL 8 MONTH)),
+    ('EQ-008', 'Draga Van Veen (sedimentos)',   'KC Denmark',         '12.110',       'KC-12110-077', 'Terreno',     NULL, NULL),
+    ('EQ-009', 'Cuadrante de muestreo 0,25 m²', 'Fabricación propia', NULL,           NULL,           'Terreno',     NULL, NULL);
+
+-- v6: la calibración vigente de cada equipo es la primera fila de su historial
+INSERT INTO equipo_calibraciones (id_equipo, fecha_calibracion, fecha_vencimiento, observaciones)
+SELECT id_equipo, fecha_ultima_calibracion, fecha_proxima_calibracion, 'Calibración inicial'
+FROM equipos
+WHERE fecha_ultima_calibracion IS NOT NULL AND fecha_proxima_calibracion IS NOT NULL;
 
 INSERT INTO ubicaciones_almacenamiento (nombre, tipo, temperatura, descripcion) VALUES
     ('Ultracongelador -80 °C · Rack A', 'Ultracongelador', '-80 °C',   'Conservación de largo plazo'),

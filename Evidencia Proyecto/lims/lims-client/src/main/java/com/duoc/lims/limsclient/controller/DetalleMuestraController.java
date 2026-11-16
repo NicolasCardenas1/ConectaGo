@@ -161,6 +161,15 @@ public class DetalleMuestraController {
     }
 
     @FXML
+    private void onPreguntarAsistente() {
+        // v6: abre el chatbot con una pregunta sobre esta muestra
+        if (codigoMuestra != null) {
+            Navigator.irAAsistente("Resume la trazabilidad de la muestra " + codigoMuestra
+                    + ": dónde, cuándo y con qué equipo se tomó, dónde está guardada y si hay alertas.");
+        }
+    }
+
+    @FXML
     private void onVolver() {
         Navigator.irAListado();
     }
@@ -694,7 +703,9 @@ public class DetalleMuestraController {
         investigadorActual = m.getInvestigador();
         lblInvestigador.setText(m.getInvestigador() == null ? "— (muestra anterior a v4)"
                 : m.getInvestigador() + (m.getInstitucion() == null ? "" : " · " + m.getInstitucion()));
-        lblFechaToma.setText(m.getFechaToma() != null ? m.getFechaToma().format(FORMATO_FECHA) : "—");
+        lblFechaToma.setText((m.getFechaToma() != null ? m.getFechaToma().format(FORMATO_FECHA) : "—")
+                // v6: con qué equipo se tomó en terreno
+                + (m.getEquipoTomaCodigo() == null ? "" : "\ncon " + m.getEquipoTomaCodigo() + " · " + m.getEquipoTomaNombre()));
         lblUbicacion.setText(vacioGuion(m.getUbicacionAlmacenamiento()));
         lblCondicion.setText(vacioGuion(m.getCondicionRecepcion()));
         lblVencimiento.setText(m.getFechaVencimiento() != null

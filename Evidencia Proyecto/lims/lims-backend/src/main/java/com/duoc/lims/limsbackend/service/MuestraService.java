@@ -56,6 +56,7 @@ public class MuestraService {
     private final InvestigadorRepository investigadorRepository;
     private final CustodiaService custodiaService;
     private final SitioService sitioService;
+    private final EquipoService equipoService;
 
     public MuestraService(MuestraRepository muestraRepository,
                           CentroRepository centroRepository,
@@ -68,7 +69,8 @@ public class MuestraService {
                           MuestraHistorialEstadoRepository historialRepository,
                           InvestigadorRepository investigadorRepository,
                           CustodiaService custodiaService,
-                          SitioService sitioService) {
+                          SitioService sitioService,
+                          EquipoService equipoService) {
         this.muestraRepository = muestraRepository;
         this.centroRepository = centroRepository;
         this.usuarioRepository = usuarioRepository;
@@ -81,6 +83,7 @@ public class MuestraService {
         this.investigadorRepository = investigadorRepository;
         this.custodiaService = custodiaService;
         this.sitioService = sitioService;
+        this.equipoService = equipoService;
     }
 
     @Transactional
@@ -117,6 +120,10 @@ public class MuestraService {
         muestra.setCodigoUnico(generarCodigoUnico(centro.getId()));
         muestra.setTipoMuestra(TipoMuestra.fromValorDb(dto.getTipoMuestra()));
         muestra.setSitio(sitio);
+        if (dto.getIdEquipoToma() != null) {
+            // v6: trazabilidad de la toma: activo, con calibración vigente y de uso en terreno
+            muestra.setEquipoToma(equipoService.validarParaToma(dto.getIdEquipoToma()));
+        }
         String detalle = vacioANull(dto.getProcedencia());
         String procedencia = detalle == null ? sitio.getNombre() : sitio.getNombre() + " — " + detalle;
         muestra.setProcedencia(procedencia.length() > 150 ? procedencia.substring(0, 150) : procedencia);
@@ -225,7 +232,9 @@ public class MuestraService {
                 m.getInterpretacionOrigen(),
                 m.getUsuarioInterpretacion() == null ? null
                         : m.getUsuarioInterpretacion().getNombre() + " " + m.getUsuarioInterpretacion().getApellido(),
-                m.getFechaInterpretacion()
+                m.getFechaInterpretacion(),
+                m.getEquipoToma() == null ? null : m.getEquipoToma().getCodigo(),
+                m.getEquipoToma() == null ? null : m.getEquipoToma().getNombre()
         );
     }
 

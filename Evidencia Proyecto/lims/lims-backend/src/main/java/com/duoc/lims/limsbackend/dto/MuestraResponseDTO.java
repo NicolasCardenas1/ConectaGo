@@ -39,4 +39,7 @@ public class MuestraResponseDTO {
     private String interpretacionOrigen;
     private String interpretacionPor;
     private LocalDateTime fechaInterpretacion;
+    // v6 — equipo con que se tomó la muestra en terreno
+    private String equipoTomaCodigo;
+    private String equipoTomaNombre;
 }

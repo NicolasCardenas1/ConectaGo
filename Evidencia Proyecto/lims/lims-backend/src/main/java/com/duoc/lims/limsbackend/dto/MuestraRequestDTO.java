@@ -26,6 +26,9 @@ public class MuestraRequestDTO {
     // Se guarda en "procedencia" junto al nombre del sitio.
     private String procedencia;
 
+    // v6: equipo de terreno con que se tomó la muestra (opcional; debe ser de uso Terreno o Ambos).
+    private Integer idEquipoToma;
+
     @NotNull(message = "prioridad es obligatorio")
     private String prioridad;
 

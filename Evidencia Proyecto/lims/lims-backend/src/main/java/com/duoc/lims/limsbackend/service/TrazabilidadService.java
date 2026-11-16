@@ -3,6 +3,7 @@ package com.duoc.lims.limsbackend.service;
 import com.duoc.lims.limsbackend.dto.TrazabilidadEventoDTO;
 import com.duoc.lims.limsbackend.model.AnalisisCatalogo;
 import com.duoc.lims.limsbackend.model.Aprobacion;
+import com.duoc.lims.limsbackend.model.Equipo;
 import com.duoc.lims.limsbackend.model.CustodiaEvento;
 import com.duoc.lims.limsbackend.model.Muestra;
 import com.duoc.lims.limsbackend.model.MuestraAnalisis;
@@ -49,6 +50,7 @@ public class TrazabilidadService {
     private final ResultadoVersionRepository versionRepository;
     private final AprobacionRepository aprobacionRepository;
     private final ReporteRepository reporteRepository;
+    private final EquipoService equipoService;
 
     public TrazabilidadService(MuestraRepository muestraRepository,
                                MuestraHistorialEstadoRepository historialRepository,
@@ -57,7 +59,8 @@ public class TrazabilidadService {
                                ResultadoRepository resultadoRepository,
                                ResultadoVersionRepository versionRepository,
                                AprobacionRepository aprobacionRepository,
-                               ReporteRepository reporteRepository) {
+                               ReporteRepository reporteRepository,
+                               EquipoService equipoService) {
         this.muestraRepository = muestraRepository;
         this.historialRepository = historialRepository;
         this.custodiaRepository = custodiaRepository;
@@ -66,6 +69,7 @@ public class TrazabilidadService {
         this.versionRepository = versionRepository;
         this.aprobacionRepository = aprobacionRepository;
         this.reporteRepository = reporteRepository;
+        this.equipoService = equipoService;
     }
 
     @Transactional(readOnly = true)
@@ -84,6 +88,9 @@ public class TrazabilidadService {
                 d.add("Punto: " + m.getProcedencia());
             }
             d.add("Tipo: " + m.getTipoMuestra().getValorDb());
+            if (m.getEquipoToma() != null) {
+                d.add("Equipo de toma: " + m.getEquipoToma().getEtiqueta() + estadoCalibracionEn(m));
+            }
             if (m.getInvestigador() != null) {
                 d.add("Investigador: " + m.getInvestigador().getNombreCompleto());
             }
@@ -183,6 +190,19 @@ public class TrazabilidadService {
                         e.getFecha() == null ? null : e.getFecha().withNano(0),
                 Comparator.nullsFirst(Comparator.<LocalDateTime>naturalOrder())));
         return eventos;
+    }
+
+    /** v6: qué calibración del equipo de toma estaba vigente el día del muestreo. */
+    private String estadoCalibracionEn(Muestra m) {
+        Equipo e = m.getEquipoToma();
+        if (e.getFechaUltimaCalibracion() == null && e.getFechaProximaCalibracion() == null) {
+            return " (sin calibración: equipo no metrológico)";
+        }
+        return equipoService.calibracionVigenteEn(e.getId(), m.getFechaToma().toLocalDate())
+                .map(c -> c.getFechaVencimiento().isBefore(m.getFechaToma().toLocalDate())
+                        ? " (calibración VENCIDA el " + c.getFechaVencimiento() + ")"
+                        : " (calibrado el " + c.getFechaCalibracion() + ", vigente hasta " + c.getFechaVencimiento() + ")")
+                .orElse(" (sin calibración registrada a esa fecha)");
     }
 
     private String nombre(Usuario u) {

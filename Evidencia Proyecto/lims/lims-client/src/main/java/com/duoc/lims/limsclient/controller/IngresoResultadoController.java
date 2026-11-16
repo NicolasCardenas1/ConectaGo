@@ -167,7 +167,8 @@ public class IngresoResultadoController {
     private void cargarEquipos() {
         Thread hilo = new Thread(() -> {
             try {
-                List<Equipo> equipos = apiClient.listarEquipos(true);
+                // v6: solo equipos de laboratorio (o de uso mixto); los de terreno no miden resultados
+                List<Equipo> equipos = apiClient.listarEquipos(true).stream().filter(Equipo::usoLaboratorio).toList();
                 Platform.runLater(() -> {
                     cbEquipo.setItems(FXCollections.observableArrayList(equipos));
                     if (vigente != null && vigente.idEquipo() != null) {

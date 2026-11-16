@@ -1,6 +1,7 @@
 package com.duoc.lims.limsclient.controller;
 
 import com.duoc.lims.limsclient.Navigator;
+import com.duoc.lims.limsclient.model.Equipo;
 import com.duoc.lims.limsclient.model.Investigador;
 import com.duoc.lims.limsclient.model.InvestigadorRequest;
 import com.duoc.lims.limsclient.model.Muestra;
@@ -49,6 +50,7 @@ public class RegistroMuestraController {
     @FXML private ComboBox<Investigador> cbInvestigador;
     @FXML private ComboBox<String> cbTipoMuestra;
     @FXML private ComboBox<Sitio> cbSitio;
+    @FXML private ComboBox<Equipo> cbEquipoToma;   // v6
     @FXML private TextField txtPunto;
     @FXML private DatePicker dpFechaToma;
     @FXML private TextField txtHoraToma;
@@ -86,6 +88,7 @@ public class RegistroMuestraController {
         cargarInvestigadores(null);
         cargarSitios(null);
         cargarUbicaciones();
+        cargarEquiposToma();
     }
 
     /** v5: alta rápida de un sitio de muestreo sin salir del registro. */
@@ -188,6 +191,14 @@ public class RegistroMuestraController {
         datos.setIdInvestigador(investigador.id());
         datos.setTipoMuestra(tipo);
         datos.setIdSitio(sitio.id());
+        if (cbEquipoToma.getValue() != null) {
+            if (cbEquipoToma.getValue().calibracionVencida()) {
+                lblEstado.setText("El equipo de toma " + cbEquipoToma.getValue().codigo()
+                        + " tiene la calibración vencida: elige otro equipo.");
+                return;
+            }
+            datos.setIdEquipoToma(cbEquipoToma.getValue().id());
+        }
         datos.setProcedencia(Formularios.texto(txtPunto));
         datos.setPrioridad(prioridad);
         datos.setObservaciones(txtObservaciones.getText());
@@ -256,6 +267,20 @@ public class RegistroMuestraController {
                 });
             } catch (Exception e) {
                 Platform.runLater(() -> lblEstado.setText("No se pudo cargar la lista de sitios: " + e.getMessage()));
+            }
+        });
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    /** v6: equipos de terreno (o de uso mixto) activos para registrar con qué se tomó la muestra. */
+    private void cargarEquiposToma() {
+        Thread hilo = new Thread(() -> {
+            try {
+                List<Equipo> lista = apiClient.listarEquipos(true).stream().filter(Equipo::usoTerreno).toList();
+                Platform.runLater(() -> cbEquipoToma.setItems(FXCollections.observableArrayList(lista)));
+            } catch (Exception e) {
+                Platform.runLater(() -> lblEstado.setText("No se pudo cargar los equipos de terreno: " + e.getMessage()));
             }
         });
         hilo.setDaemon(true);

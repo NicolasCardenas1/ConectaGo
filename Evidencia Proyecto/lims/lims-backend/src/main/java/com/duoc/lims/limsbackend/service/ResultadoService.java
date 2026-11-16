@@ -80,7 +80,7 @@ public class ResultadoService {
                         "No existe el usuario con id " + dto.getIdUsuarioIngreso()));
 
         // v5: trazabilidad metrológica — equipo activo y con calibración vigente
-        Equipo equipo = equipoService.validarParaUso(dto.getIdEquipo());
+        Equipo equipo = equipoService.validarParaAnalisis(dto.getIdEquipo());
 
         // --- RF03: validación automática de rango ---
         boolean dentroRango = validarRango(ma.getAnalisis(), dto.getValorResultado(), dto.getObservaciones());
@@ -142,7 +142,7 @@ public class ResultadoService {
 
         Usuario usuario = usuarioRepository.findById(dto.getIdUsuario())
                 .orElseThrow(() -> new IllegalArgumentException("No existe el usuario con id " + dto.getIdUsuario()));
-        Equipo equipo = equipoService.validarParaUso(dto.getIdEquipo());
+        Equipo equipo = equipoService.validarParaAnalisis(dto.getIdEquipo());
 
         boolean dentroRango = validarRango(ma.getAnalisis(), dto.getValorResultado(), dto.getObservaciones());
         AnomaliaDTO anomalia = anomaliaService.evaluar(ma, dto.getValorResultado(), resultado.getId());

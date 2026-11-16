@@ -9,6 +9,7 @@ public class MuestraRequest {
     private Integer idInvestigador;
     private Integer idSitio;               // v5: sitio de muestreo del catálogo
     private String procedencia;            // detalle opcional del punto (ej. "estación 3")
+    private Integer idEquipoToma;          // v6: equipo de terreno con que se tomó
     private String prioridad;
     private String observaciones;
     private LocalDateTime fechaToma;
@@ -29,6 +30,9 @@ public class MuestraRequest {
 
     public String getProcedencia() { return procedencia; }
     public void setProcedencia(String procedencia) { this.procedencia = procedencia; }
+
+    public Integer getIdEquipoToma() { return idEquipoToma; }
+    public void setIdEquipoToma(Integer idEquipoToma) { this.idEquipoToma = idEquipoToma; }
 
     public String getPrioridad() { return prioridad; }
     public void setPrioridad(String prioridad) { this.prioridad = prioridad; }

@@ -83,6 +83,14 @@ public class Muestra {
     private String interpretacionOrigen;
     private String interpretacionPor;
     private LocalDateTime fechaInterpretacion;
+    private String equipoTomaCodigo;   // v6
+    private String equipoTomaNombre;   // v6
+
+    public String getEquipoTomaCodigo() { return equipoTomaCodigo; }
+    public void setEquipoTomaCodigo(String equipoTomaCodigo) { this.equipoTomaCodigo = equipoTomaCodigo; }
+
+    public String getEquipoTomaNombre() { return equipoTomaNombre; }
+    public void setEquipoTomaNombre(String equipoTomaNombre) { this.equipoTomaNombre = equipoTomaNombre; }
 
     public Integer getIdSitio() { return idSitio; }
     public void setIdSitio(Integer idSitio) { this.idSitio = idSitio; }

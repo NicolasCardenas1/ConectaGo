@@ -21,4 +21,5 @@ public class EquipoResponseDTO {
     private boolean activo;
     private String estadoCalibracion;   // Vigente / Por vencer / Vencida / Sin registro
     private Long diasParaVencer;        // negativo si ya venció; null sin fecha
+    private String uso;                 // v6: Terreno / Laboratorio / Ambos
 }

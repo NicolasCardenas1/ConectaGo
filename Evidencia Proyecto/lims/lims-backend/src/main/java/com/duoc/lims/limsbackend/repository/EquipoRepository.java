@@ -10,4 +10,7 @@ public interface EquipoRepository extends JpaRepository<Equipo, Integer> {
     List<Equipo> findAllByOrderByCodigoAsc();
 
     boolean existsByCodigoIgnoreCase(String codigo);
+
+    // v6: búsqueda por la etiqueta física (la usa el chatbot de trazabilidad)
+    java.util.Optional<Equipo> findByCodigoIgnoreCase(String codigo);
 }

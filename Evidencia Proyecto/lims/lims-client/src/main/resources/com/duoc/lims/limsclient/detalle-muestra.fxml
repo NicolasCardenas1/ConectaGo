@@ -108,6 +108,7 @@
             <Label text="Todo lo que le pasó a la muestra y a cada dato, en orden: quién, cuándo, con qué equipo y por qué (ISO/IEC 17025)."
                    styleClass="hint" wrapText="true" HBox.hgrow="ALWAYS"/>
             <Label fx:id="lblResumenTraza" styleClass="hint"/>
+            <Button text="Preguntar al asistente" styleClass="btn-secondary" onAction="#onPreguntarAsistente"/>
         </HBox>
         <ScrollPane fitToWidth="true" styleClass="transparent-scroll" VBox.vgrow="ALWAYS"
                     style="-fx-background: #f1f5f9;">

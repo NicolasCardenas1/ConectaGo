@@ -25,20 +25,20 @@ Aplicación de escritorio para **investigadores que realizan muestreos ambiental
 |---|---|
 | Cualquiera edita cualquier celda | **Permisos por rol**: el analista mide, el supervisor aprueba, y nadie aprueba su propio resultado |
 | Un valor se sobrescribe sin dejar rastro | **Cada resultado tiene versiones**: quién lo cambió, cuándo, con qué equipo y **por qué** (motivo obligatorio). Un dato aprobado no se puede modificar |
-| No se sabe con qué instrumento se midió ni si estaba calibrado | Cada resultado queda asociado a un **equipo con calibración vigente**; uno vencido **no se puede usar** |
+| No se sabe con qué instrumento se tomó o midió la muestra, ni si estaba calibrado | Cada muestra queda asociada al **equipo con que se tomó en terreno** y cada resultado al **equipo de laboratorio con que se midió**; uno con la calibración vencida **no se puede usar**, y el **historial de calibraciones** nunca se sobrescribe |
 | El sitio es un texto escrito a mano | **Sitios georreferenciados** (latitud/longitud) en un **mapa**, y listas desplegables en vez de texto libre |
 | Validación manual (si alguien la hace) | **Validación automática de rangos** + **detección de valores atípicos** contra el historial del sitio, en vivo |
 | Un archivo por persona, versiones en conflicto | **Base central multiusuario**: todos ven el mismo estado en tiempo real |
 | Sin flujo de trabajo | **Flujo con estados**: recepción → análisis → aprobación → rechazo/corrección → informe, con **cadena de custodia firmada** |
 | Informe armado a mano | **Informe PDF versionado** con equipo, correcciones e **interpretación asistida por IA revisada por un supervisor** |
-| "¿Quién cambió esto?" no tiene respuesta | **Trazabilidad completa** de cada muestra en una línea de tiempo (requisito central de ISO/IEC 17025) |
+| "¿Quién cambió esto?" no tiene respuesta | **Trazabilidad completa** de cada muestra en una línea de tiempo (requisito central de ISO/IEC 17025), y un **asistente (chatbot)** que la responde en lenguaje natural: "¿dónde está guardada la M-2026-0012 y con qué equipo se tomó?" |
 
 | | |
 |---|---|
 | **Equipo** | Claudio Murúa (Product Owner) · Nicolás Cárdenas (Scrum Master) · Cristian Solís |
 | **Docente** | Anibal Faúndez |
 | **Metodología** | Scrum — 6 sprints de 2 semanas |
-| **Estado** | RF01 a RF06 implementados + **v5** (correcciones de la retroalimentación de Fase 2) · en etapa de pruebas, instalador y documentación final |
+| **Estado** | RF01 a RF06 implementados + **v5** (retroalimentación de Fase 2) + **v6** (retroalimentación de la presentación de Fase 3) · en etapa de pruebas, instalador y documentación final |
 
 ---
 
@@ -61,6 +61,11 @@ Aplicación de escritorio para **investigadores que realizan muestreos ambiental
 | **v5** | **Datos desplegables**: sitio, equipo, ubicación de almacenamiento y condición de recepción salen de catálogos | ✅ |
 | **v5** | **Inteligencia artificial**: detección automática de **valores atípicos** por sitio (estadística robusta) e **interpretación del informe** redactada por IA (Claude) y revisada por un supervisor | ✅ |
 | **v5** | **Panel de inicio** con indicadores, alertas de calidad y **tendencias** por sitio y parámetro | ✅ |
+| **v6** | **Equipos de terreno**: cada equipo tiene un uso (Terreno / Laboratorio / Ambos) y cada muestra registra **con qué equipo se tomó** (botella Niskin, draga, cuadrante, sonda); solo equipos de laboratorio miden resultados | ✅ |
+| **v6** | **Historial de calibraciones**: cada calibración (fecha, vencimiento, quién calibró, certificado) queda registrada sin sobrescribir la anterior, y la trazabilidad indica qué calibración estaba vigente el día en que se usó el equipo | ✅ |
+| **v6** | **Diagrama de trazabilidad de toda la información**: qué dato se registra en cada etapa, en qué tabla y quién lo firma ([DIAGRAMA-TRAZABILIDAD.md](Evidencia%20Proyecto/lims/DIAGRAMA-TRAZABILIDAD.md)) | ✅ |
+| **v6** | **Asistente de trazabilidad (chatbot)**: preguntas en lenguaje natural sobre una muestra o un equipo (dónde y cuándo se tomó, con qué equipo, custodia, ubicación, resultados, aprobaciones, informes). Solo lectura, con IA (Claude) o, sin API key, por código de muestra/equipo | ✅ |
+| Extra | **Etiqueta de la muestra (50 × 25 mm)** para el envase: código, tipo, sitio, fecha de toma, almacenamiento y prioridad a la vista, y un **código QR** con el detalle completo. Se ofrece al registrar la muestra y se puede reimprimir desde el detalle | ✅ |
 
 ### Flujo de una muestra
 
@@ -70,13 +75,15 @@ Recibida ─► En análisis ─► Resultados ingresados ─► Aprobada ─►
                                   └── corrección del analista (versión nueva, con motivo) ──┘
 ```
 
+El recorrido completo de la información (toma en terreno → registro → custodia → análisis → resultado → aprobación → interpretación → informe), con las tablas donde queda cada dato, está en el **[diagrama de trazabilidad](Evidencia%20Proyecto/lims/DIAGRAMA-TRAZABILIDAD.md)**.
+
 ### Roles
 
 | Rol | Puede |
 |---|---|
-| **Analista** | Registrar investigadores, sitios y muestras, firmar la cadena de custodia, asignar análisis, ingresar y corregir resultados |
+| **Analista** | Registrar investigadores, sitios y muestras (con su equipo de toma), firmar la cadena de custodia, asignar análisis, ingresar y corregir resultados, consultar el **asistente de trazabilidad** |
 | **Supervisor** | Todo lo anterior + aprobar/rechazar resultados, redactar la interpretación (IA) y emitir informes PDF |
-| **Administrador** | Todo lo anterior + administrar usuarios, el catálogo de parámetros y rangos, los equipos (calibración) y las ubicaciones |
+| **Administrador** | Todo lo anterior + administrar usuarios, el catálogo de parámetros y rangos, los equipos (uso y **registro de calibraciones**) y las ubicaciones |
 
 ---
 
@@ -87,7 +94,7 @@ Basado en el historial de commits del repositorio (`git log`, `git shortlog -sn`
 | Integrante | Rol Scrum | Aporte principal |
 |---|---|---|
 | **Nicolás Cárdenas** | Scrum Master | Estructura del repositorio y documentación de Fase 1 y 2 (presentación, informe, Carta Gantt). **Backend:** catálogo de análisis (CRUD), análisis por muestra y **resultados con validación de rango** (RF02/RF03), **aprobaciones** con avance de estado (RF04), historial de informes emitidos (RF05) con su pantalla. Base compartida en la nube (Aiven) y documentación de endpoints |
-| **Cristian Solís** | Equipo de desarrollo | Base del proyecto (Spring Boot + JavaFX). **Muestras** (RF01): entidades JPA, endpoints, ventanas y registro de muestra. Endpoints de detalle, **pantalla de aprobación** (RF04) e historial de estados. **Exportación a PDF** (RF05). **v4:** dominio ambiental (investigadores, cadena de custodia) y seguridad por rol (RF06) |
+| **Cristian Solís** | Equipo de desarrollo | Base del proyecto (Spring Boot + JavaFX). **Muestras** (RF01): entidades JPA, endpoints, ventanas y registro de muestra. Endpoints de detalle, **pantalla de aprobación** (RF04) e historial de estados. **Exportación a PDF** (RF05). **v4:** dominio ambiental (investigadores, cadena de custodia) y seguridad por rol (RF06). **Etiqueta de la muestra 50 × 25 mm con código QR** (vista previa e impresión). **v6 (respuesta a la retroalimentación de Fase 3):** equipos de terreno, historial de calibraciones, diagrama de trazabilidad y **asistente de trazabilidad (chatbot)** |
 | **Claudio Murúa** | Product Owner | **Sistema de usuarios** (RF06): login, registro, roles y reseteo de contraseña (backend + cliente) y su documentación. **v5 (respuesta a la retroalimentación de Fase 2):** trazabilidad del dato (versiones, equipos con calibración, línea de tiempo), sitios georreferenciados y mapa, catálogos desplegables, detección de anomalías, interpretación con IA, panel de inicio, informe PDF ampliado y datos de demostración |
 
 > Tabla a validar por el equipo antes de la entrega: cada integrante debe confirmar su fila y, en la presentación, mostrar en vivo su propia parte.
@@ -102,7 +109,8 @@ Basado en el historial de commits del repositorio (`git log`, `git shortlog -sn`
 | Backend (API REST) | **Spring Boot 4**, Spring Data JPA (Hibernate), Spring Security, Bean Validation, Lombok |
 | Base de datos | **MySQL 8** — local con Docker o compartida en la nube (Aiven) |
 | Seguridad | Contraseñas con **BCrypt**, sesión con token *Bearer*, permisos por rol |
-| Informes | **OpenPDF** |
+| Informes | **OpenPDF** · códigos QR con **ZXing** |
+| Inteligencia artificial | **Claude** (SDK oficial `anthropic-java`): borrador de interpretación del informe y asistente de trazabilidad con herramientas de solo lectura. Opcional: sin API key funciona con reglas / consulta por código |
 | Herramientas | IntelliJ IDEA, Maven Wrapper, Docker Desktop, Git/GitHub |
 
 ### Arquitectura
@@ -112,7 +120,7 @@ Basado en el historial de commits del repositorio (`git log`, `git shortlog -sn`
 │  Cliente JavaFX      │  Authorization:    │  Backend Spring Boot     │ ─────────► │  MySQL 8  │
 │  (escritorio)        │  Bearer <token>    │  controller → service →  │            │ (Docker / │
 │  pantallas FXML      │ ─────────────────► │  repository (JPA)        │            │  Aiven)   │
-│  ApiClient           │ ◄───────────────── │  security · PDF          │            └───────────┘
+│  ApiClient           │ ◄───────────────── │  security · PDF · IA     │            └───────────┘
 └──────────────────────┘                    └──────────────────────────┘
 ```
 
@@ -129,6 +137,8 @@ ConectaGo/
 └── Evidencia Proyecto/
     └── lims/
         ├── README.md              ← guía técnica completa (instalación, endpoints, problemas comunes)
+        ├── DIAGRAMA-TRAZABILIDAD.md ← flujo de la información y tablas donde queda cada dato
+        ├── GUION-DEMO.md          ← paso a paso de la presentación
         ├── README-aiven.md        ← conexión a la base de datos compartida en la nube
         ├── lims-backend/          ← API REST Spring Boot + esquema SQL (db-init/), migraciones (db-migrations/) y test.http
         └── lims-client/           ← aplicación de escritorio JavaFX
@@ -156,11 +166,11 @@ cd ..\lims-client
 .\mvnw.cmd javafx:run
 ```
 
-En una base de datos nueva, el backend crea el usuario administrador **`admin` / `admin123`**. Si usan una base que ya existía (por ejemplo Aiven), primero ejecuten **en orden** las migraciones `lims-backend/db-migrations/v4-dominio-ambiental.sql` y `v5-trazabilidad-sitios-ia.sql`. Desde ahí se crean los Supervisores y Analistas en la pantalla *Usuarios* (cambien esa contraseña al entrar).
+En una base de datos nueva, el backend crea el usuario administrador **`admin` / `admin123`**. Si usan una base que ya existía (por ejemplo Aiven), primero ejecuten **en orden** las migraciones `lims-backend/db-migrations/v4-dominio-ambiental.sql`, `v5-trazabilidad-sitios-ia.sql` y `v6-equipos-terreno-calibraciones.sql`. Desde ahí se crean los Supervisores y Analistas en la pantalla *Usuarios* (cambien esa contraseña al entrar).
 
-**Para una demo con datos** (tendencias, mapa y valores atípicos necesitan historial), carguen en la BD local `lims-backend/db-migrations/datos-demo-v5.sql`: crea 8 meses de muestras ambientales y los usuarios `supervisor.demo` / `super123` y `analista.demo` / `analista123`. El paso a paso de la presentación está en **[GUION-DEMO.md](Evidencia%20Proyecto/lims/GUION-DEMO.md)**.
+**Para una demo con datos** (tendencias, mapa y valores atípicos necesitan historial), carguen en la BD local `lims-backend/db-migrations/datos-demo-v5.sql`: crea 8 meses de muestras ambientales y los usuarios `supervisor.demo` / `super123` y `analista.demo` / `analista123`. Después carguen `datos-demo-v6.sql`, que asigna a esas muestras el equipo con que se tomaron (para que el asistente de trazabilidad pueda responderlo). El paso a paso de la presentación está en **[GUION-DEMO.md](Evidencia%20Proyecto/lims/GUION-DEMO.md)**.
 
-**IA (opcional):** si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY`, el borrador de interpretación del informe lo redacta Claude; sin ella, se genera por reglas y todo lo demás funciona igual.
+**IA (opcional):** si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY`, el borrador de interpretación del informe lo redacta Claude y el asistente de trazabilidad responde en lenguaje natural; sin ella, el borrador se genera por reglas, el asistente responde consultas por código (`M-2026-0012`, `EQ-005`) y todo lo demás funciona igual.
 
 ➡️ La guía completa —configuración, base en la nube, endpoints de la API, datos de prueba con `test.http` y solución de problemas— está en **[Evidencia Proyecto/lims/README.md](Evidencia%20Proyecto/lims/README.md)**.
 
@@ -173,10 +183,11 @@ En una base de datos nueva, el backend crea el usuario administrador **`admin` /
 | Inicio de sesión | Login, registro (como Analista) y "¿Olvidaste tu contraseña?" |
 | **Inicio** | Indicadores, **alertas de calidad** (atípicos, calibraciones, rechazos, conservación) y **tendencia** de un parámetro por sitio |
 | Listado de muestras | Tabla con estados en color y buscador en vivo |
-| Registro de muestra | Investigador, **sitio del catálogo**, fecha de toma, **condición y ubicación desplegables** y firma de recepción; genera el código único |
-| Detalle de muestra | Datos, análisis, ingreso y **corrección** de resultados, **versiones**, **trazabilidad completa**, historial, **cadena de custodia**, **interpretación (IA)** e informe PDF |
+| Registro de muestra | Investigador, **sitio del catálogo**, fecha de toma, **equipo de toma**, **condición y ubicación desplegables** y firma de recepción; genera el código único y ofrece imprimir la **etiqueta con QR** |
+| Detalle de muestra | Datos, análisis, ingreso y **corrección** de resultados, **versiones**, **trazabilidad completa**, historial, **cadena de custodia**, **interpretación (IA)**, informe PDF, **reimpresión de la etiqueta** y botón **Preguntar al asistente** |
 | **Sitios y mapa** | Mapa interactivo de los sitios de muestreo, coloreados según sus resultados |
-| **Equipos y almacenamiento** | Equipos con estado de calibración y ubicaciones de almacenamiento |
+| **Equipos y almacenamiento** | Equipos de terreno y de laboratorio con estado de calibración, **historial de calibraciones** y ubicaciones de almacenamiento |
+| **Asistente de trazabilidad** | Chatbot de solo lectura: preguntas sobre una muestra o un equipo, con sugerencias de preguntas y las consultas que hizo en cada respuesta |
 | Investigadores | Quienes encargan los muestreos y reciben los informes |
 | Parámetros y rangos | Tabla de rangos normales por parámetro (el Administrador la mantiene) |
 | Aprobaciones | Resultados pendientes con panel de revisión (Supervisor / Administrador) |
@@ -186,8 +197,8 @@ En una base de datos nueva, el backend crea el usuario administrador **`admin` /
 
 ## Próximos pasos
 
-- Pruebas unitarias JUnit de los servicios (detección de anomalías, corrección de resultados, aprobaciones).
+- Pruebas unitarias JUnit de los servicios (detección de anomalías, corrección de resultados, aprobaciones, calibraciones y asistente de trazabilidad).
 - Validar con la investigadora los rangos reales de los parámetros de algas y registrar su fuente.
-- Código QR en la etiqueta de la muestra y en el informe, que lleve a su trazabilidad.
+- Código QR en el informe PDF que lleve a la trazabilidad de la muestra (la etiqueta del envase ya tiene QR).
 - Instalador (`.exe`), video demo, informe final y presentación.
 - HTTPS para una instalación en producción (RNF04).

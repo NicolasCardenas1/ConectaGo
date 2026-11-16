@@ -22,6 +22,9 @@ public class EquipoRequestDTO {
 
     private String numeroSerie;
 
+    // v6: Terreno / Laboratorio / Ambos (si viene vacío se asume Laboratorio)
+    private String uso;
+
     private LocalDate fechaUltimaCalibracion;
 
     private LocalDate fechaProximaCalibracion;

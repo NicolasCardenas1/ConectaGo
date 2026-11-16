@@ -27,6 +27,8 @@
                     maxWidth="Infinity" onAction="#onCatalogo"/>
             <Button fx:id="btnEquipos" text="Equipos y almacenamiento" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onEquipos"/>
+            <Button fx:id="btnAsistente" text="Asistente de trazabilidad" styleClass="sidebar-item"
+                    maxWidth="Infinity" onAction="#onAsistente"/>
             <Button fx:id="btnReportes" text="Reportes" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onReportes"/>
             <Button fx:id="btnUsuarios" text="Usuarios" styleClass="sidebar-item"

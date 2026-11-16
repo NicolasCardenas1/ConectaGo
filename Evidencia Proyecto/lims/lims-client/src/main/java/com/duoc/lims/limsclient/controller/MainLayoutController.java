@@ -28,6 +28,7 @@ public class MainLayoutController {
     @FXML private Button btnInvestigadores;
     @FXML private Button btnCatalogo;
     @FXML private Button btnReportes;
+    @FXML private Button btnAsistente;   // v6
     @FXML private Label lblUsuario;
     @FXML private Label lblRol;
 
@@ -53,7 +54,7 @@ public class MainLayoutController {
     /** Resalta en la barra lateral la sección actual ("muestras", "aprobaciones" o "usuarios"). */
     public void marcarSeccion(String seccion) {
         for (Button b : List.of(btnInicio, btnMuestras, btnAprobaciones, btnUsuarios, btnInvestigadores, btnCatalogo,
-                btnReportes, btnSitios, btnEquipos)) {
+                btnReportes, btnSitios, btnEquipos, btnAsistente)) {
             b.getStyleClass().remove("activo");
         }
         switch (seccion) {
@@ -66,6 +67,7 @@ public class MainLayoutController {
             case "investigadores" -> btnInvestigadores.getStyleClass().add("activo");
             case "catalogo" -> btnCatalogo.getStyleClass().add("activo");
             case "reportes" -> btnReportes.getStyleClass().add("activo");
+            case "asistente" -> btnAsistente.getStyleClass().add("activo");
             default -> { }
         }
     }
@@ -103,6 +105,11 @@ public class MainLayoutController {
     @FXML
     private void onCatalogo() {
         Navigator.irACatalogo();
+    }
+
+    @FXML
+    private void onAsistente() {
+        Navigator.irAAsistente(null);
     }
 
     @FXML

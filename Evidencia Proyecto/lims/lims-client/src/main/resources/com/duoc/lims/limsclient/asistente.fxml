@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- v6: chatbot de trazabilidad (solo lectura). Pregunta en lenguaje natural por una muestra o un equipo. -->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.duoc.lims.limsclient.controller.AsistenteController"
+      styleClass="page">
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <VBox spacing="3">
+            <Label text="Asistente de trazabilidad" styleClass="page-title"/>
+            <Label text="Pregunta por una muestra o un equipo: dónde se tomó, con qué equipo, cuándo, quién la custodió, dónde está guardada, quién aprobó..."
+                   styleClass="page-subtitle" wrapText="true"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Button text="Nueva conversación" styleClass="btn-secondary" onAction="#onNuevaConversacion"/>
+    </HBox>
+
+    <FlowPane fx:id="panelSugerencias" hgap="8" vgap="8"/>
+
+    <ScrollPane fx:id="scrollChat" fitToWidth="true" styleClass="transparent-scroll" VBox.vgrow="ALWAYS"
+                style="-fx-background: #f1f5f9;">
+        <VBox fx:id="contenedorChat" spacing="12" style="-fx-padding: 6 14 14 6;"/>
+    </ScrollPane>
+
+    <VBox spacing="6" styleClass="card-panel">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <TextField fx:id="txtPregunta" HBox.hgrow="ALWAYS" styleClass="form-field"
+                       promptText="Ej: ¿Dónde está guardada la M-2026-0012 y con qué equipo se tomó?"
+                       onAction="#onEnviar"/>
+            <Button fx:id="btnEnviar" text="Preguntar" styleClass="btn-primary" onAction="#onEnviar"/>
+        </HBox>
+        <Label fx:id="lblEstado" styleClass="hint" wrapText="true"
+               text="Solo consulta: el asistente no registra ni modifica datos. Cada respuesta indica qué datos consultó."/>
+    </VBox>
+</VBox>

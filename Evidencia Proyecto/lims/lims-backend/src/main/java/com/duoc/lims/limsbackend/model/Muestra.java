@@ -48,6 +48,11 @@ public class Muestra {
     @JoinColumn(name = "id_sitio")
     private SitioMuestreo sitio;
 
+    // v6: equipo con que se tomó la muestra en terreno (botella Niskin, draga, sonda...)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_equipo_toma")
+    private Equipo equipoToma;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_usuario_registro", nullable = false)
     private Usuario usuarioRegistro;

@@ -11,7 +11,7 @@
     <HBox spacing="12" alignment="CENTER_LEFT">
         <VBox spacing="3">
             <Label text="Equipos y almacenamiento" styleClass="page-title"/>
-            <Label text="Cada resultado queda asociado al equipo calibrado con que se midió; un equipo con la calibración vencida no se puede usar"
+            <Label text="Cada muestra queda asociada al equipo con que se tomó en terreno y cada resultado al equipo calibrado con que se midió; un equipo con la calibración vencida no se puede usar"
                    styleClass="page-subtitle" wrapText="true"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
@@ -23,7 +23,9 @@
             <VBox spacing="10" style="-fx-padding: 14 0 0 0;">
                 <HBox spacing="10" alignment="CENTER_LEFT">
                     <Button fx:id="btnNuevoEquipo" text="+ Nuevo equipo" styleClass="btn-primary" onAction="#onNuevoEquipo"/>
-                    <Button fx:id="btnEditarEquipo" text="Editar / registrar calibración" styleClass="btn-secondary" onAction="#onEditarEquipo"/>
+                    <Button fx:id="btnEditarEquipo" text="Editar" styleClass="btn-secondary" onAction="#onEditarEquipo"/>
+                    <Button fx:id="btnCalibrar" text="Registrar calibración" styleClass="btn-secondary" onAction="#onRegistrarCalibracion"/>
+                    <Button text="Historial de calibraciones" styleClass="btn-secondary" onAction="#onHistorialCalibraciones"/>
                     <Button fx:id="btnEstadoEquipo" text="Dar de baja" styleClass="btn-secondary" onAction="#onEstadoEquipo"/>
                     <Label fx:id="lblAyudaEquipos" styleClass="hint"/>
                 </HBox>
@@ -34,6 +36,7 @@
                     <columns>
                         <TableColumn fx:id="colEqCodigo" text="CÓDIGO" prefWidth="80"/>
                         <TableColumn fx:id="colEqNombre" text="EQUIPO" prefWidth="190"/>
+                        <TableColumn fx:id="colEqUso" text="USO" prefWidth="95"/>
                         <TableColumn fx:id="colEqMarca" text="MARCA / MODELO" prefWidth="170"/>
                         <TableColumn fx:id="colEqSerie" text="N° SERIE" prefWidth="110"/>
                         <TableColumn fx:id="colEqUltima" text="ÚLTIMA CALIBRACIÓN" prefWidth="130"/>

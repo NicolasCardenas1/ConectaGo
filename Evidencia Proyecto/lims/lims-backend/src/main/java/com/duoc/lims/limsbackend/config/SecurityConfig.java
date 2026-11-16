@@ -24,6 +24,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * | Interpretación del informe (borrador IA)       |    no    |     sí     |      sí       |
  * | Crear / editar análisis del catálogo           |    no    |     no     |      sí       |
  * | Crear / editar equipos y ubicaciones (v5)      |    no    |     no     |      sí       |
+ * | Registrar calibraciones de equipos (v6)        |    no    |     no     |      sí       |
+ * | Chatbot de trazabilidad, solo lectura (v6)     |    sí    |     sí     |      sí       |
  * | Administrar usuarios y contraseñas             |    no    |     no     |      sí       |
  */
 @Configuration
@@ -79,6 +81,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.PATCH, "/api/analisis/**").hasRole(ADMINISTRADOR)
                         // v5: equipos (calibración) y ubicaciones de almacenamiento: lectura para todos, escritura Administrador
                         .requestMatchers(HttpMethod.POST, "/api/equipos", "/api/ubicaciones").hasRole(ADMINISTRADOR)
+                        // v6: registrar una calibración en el historial del equipo
+                        .requestMatchers(HttpMethod.POST, "/api/equipos/*/calibraciones").hasRole(ADMINISTRADOR)
                         .requestMatchers(HttpMethod.PUT, "/api/equipos/**", "/api/ubicaciones/**").hasRole(ADMINISTRADOR)
                         .requestMatchers(HttpMethod.PATCH, "/api/equipos/**", "/api/ubicaciones/**").hasRole(ADMINISTRADOR)
                         .requestMatchers("/api/usuarios/**").hasRole(ADMINISTRADOR)

@@ -35,6 +35,10 @@ import com.duoc.lims.limsclient.model.AprobacionRequest;
 import com.duoc.lims.limsclient.model.ResultadoPendiente;
 import com.duoc.lims.limsclient.model.ReporteResumen;
 import com.duoc.lims.limsclient.model.Anomalia;
+import com.duoc.lims.limsclient.model.AsistenteRequest;
+import com.duoc.lims.limsclient.model.AsistenteRespuesta;
+import com.duoc.lims.limsclient.model.Calibracion;
+import com.duoc.lims.limsclient.model.CalibracionRequest;
 import com.duoc.lims.limsclient.model.CorreccionResultadoRequest;
 import com.duoc.lims.limsclient.model.Dashboard;
 import com.duoc.lims.limsclient.model.Equipo;
@@ -539,5 +543,22 @@ public class ApiClient {
             throw new IOException(new String(response.body(), java.nio.charset.StandardCharsets.UTF_8));
         }
         return response.body();
+    }
+
+    // =====================================================================
+    // v6 — Historial de calibraciones y chatbot de trazabilidad
+    // =====================================================================
+
+    public List<Calibracion> listarCalibraciones(int idEquipo) throws IOException, InterruptedException {
+        return lista(enviarJson("GET", "/equipos/" + idEquipo + "/calibraciones", null, 200), Calibracion.class);
+    }
+
+    public void registrarCalibracion(int idEquipo, CalibracionRequest datos) throws IOException, InterruptedException {
+        enviarJson("POST", "/equipos/" + idEquipo + "/calibraciones", datos, 201);
+    }
+
+    /** Pregunta al chatbot de trazabilidad. Puede tardar varios segundos (consulta a la IA). */
+    public AsistenteRespuesta consultarAsistente(AsistenteRequest datos) throws IOException, InterruptedException {
+        return objectMapper.readValue(enviarJson("POST", "/asistente", datos, 200), AsistenteRespuesta.class);
     }
 }

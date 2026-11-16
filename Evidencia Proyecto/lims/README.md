@@ -17,18 +17,20 @@ Aplicación de escritorio en JavaFX conectada a un backend Spring Boot y una bas
 ```
 lims/
 ├── README.md                # esta guía
+├── DIAGRAMA-TRAZABILIDAD.md # v6: flujo de toda la información y tablas donde queda cada dato
+├── GUION-DEMO.md            # paso a paso de la presentación
 ├── README-aiven.md          # conexión a la base de datos compartida en la nube
 ├── lims-backend/            # API REST (Spring Boot + JPA + Spring Security + MySQL)
 │   ├── docker-compose.yml   # levanta MySQL en un contenedor
 │   ├── db-init/             # 01-schema.sql: esquema completo (solo corre con un volumen de BD nuevo)
-│   ├── db-migrations/       # scripts para actualizar BD que ya existen (ej. v4-dominio-ambiental.sql)
+│   ├── db-migrations/       # scripts para actualizar BD que ya existen (v4, v5, v6) y datos de demostración
 │   ├── test.http            # flujo completo de pruebas de la API (cliente HTTP de IntelliJ)
 │   ├── reportes/            # informes PDF generados (ignorado por git)
 │   └── src/main/java/com/duoc/lims/limsbackend/
 │       ├── config/          # SecurityConfig (permisos por rol), DatosInicialesConfig (admin inicial)
 │       ├── security/        # sesiones con token (SesionService, TokenAuthFilter, UsuarioAutenticado)
 │       ├── controller/      # endpoints REST
-│       ├── service/         # reglas de negocio (estados, aprobaciones, custodia, PDF...)
+│       ├── service/         # reglas de negocio (estados, aprobaciones, custodia, PDF, IA, asistente...)
 │       ├── repository/      # acceso a datos (Spring Data JPA)
 │       ├── model/           # entidades JPA, enums y converters
 │       └── dto/             # objetos de entrada/salida de la API
@@ -50,7 +52,7 @@ lims/
 | `centros` | Laboratorio que usa el sistema (MVP de un solo centro) |
 | `roles`, `usuarios` | Personal del laboratorio y su rol (Administrador, Supervisor, Analista) |
 | `investigadores` | Quien encarga el muestreo y recibe el informe (no inicia sesión) |
-| `muestras` | Muestra con código único, tipo, sitio y fecha de toma, almacenamiento, *conservar hasta* y estado |
+| `muestras` | Muestra con código único, tipo, sitio y fecha de toma, **equipo de toma** (v6), almacenamiento, *conservar hasta* y estado |
 | `custodia_eventos` | Cadena de custodia: entregas, traslados y retiros firmados por quien recibe |
 | `muestra_historial_estado` | Cada cambio de estado de la muestra (quién, cuándo, por qué) |
 | `analisis_catalogo` | Parámetros con su **rango normal** (mínimo, máximo, unidad, método/fuente) |
@@ -60,7 +62,8 @@ lims/
 | `aprobaciones` | Evaluación del supervisor (aprobado/rechazado y motivo) **de una versión concreta** del resultado |
 | `reportes` | Cada informe PDF emitido (con versión) |
 | `sitios_muestreo` | **v5** — sitios con **latitud/longitud**, tipo de ambiente y comuna (mapa y lista desplegable) |
-| `equipos` | **v5** — equipos con **fecha de calibración**; uno vencido no se puede usar para medir |
+| `equipos` | **v5** — equipos con **fecha de calibración**; uno vencido no se puede usar. **v6:** uso *Terreno* (toma), *Laboratorio* (medición) o *Ambos* |
+| `equipo_calibraciones` | **v6** — historial de calibraciones de cada equipo (fecha, vencimiento, quién calibró, certificado). Nunca se sobrescribe |
 | `ubicaciones_almacenamiento` | **v5** — congeladores, refrigeradores y estantes (lista desplegable) |
 
 ## Requisitos previos
@@ -220,6 +223,12 @@ Get-Content db-migrations\datos-demo-v5.sql | docker exec -i lims-mysql mysql -u
 
 Crea los usuarios de demostración `supervisor.demo` / `super123`, `analista.demo` / `analista123` y `admin` / `admin123` (si no existía). Es idempotente: si ya se cargó, no hace nada.
 
+**v6:** después carguen también `datos-demo-v6.sql`. Asigna a las muestras de la demo el **equipo con que se tomaron** en terreno y deja una calibración anterior en el historial de `EQ-001` y `EQ-002`, para que el asistente de trazabilidad pueda responder "¿con qué equipo se tomó?":
+
+```powershell
+Get-Content db-migrations\datos-demo-v6.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+```
+
 ## 5. Levantar el cliente JavaFX
 
 En otra terminal:
@@ -244,10 +253,11 @@ Al iniciar sesión, la ventana se agranda y aparece el **marco principal**: una 
 | Inicio de sesión / Crear usuario / Recuperar contraseña | Al abrir la app | Autenticarse contra el backend (RF06). *Crear usuario* siempre registra Analistas |
 | **Inicio** (v5) | Pantalla inicial al iniciar sesión | Indicadores (muestras, pendientes, fuera de rango, **atípicos**, tiempo hasta aprobación, equipos vencidos), **alertas de calidad** (doble clic abre la muestra) y **gráfico de tendencia** de un parámetro por sitio con su rango normal |
 | **Listado de muestras** (mockup 11.2) | Barra lateral → *Muestras* | Tabla con investigador, sitio y estado en etiquetas de color, **buscador en vivo** por código/investigador/sitio/tipo, doble clic para abrir el detalle. Las más recientes primero |
-| **Registro de muestra** (mockup 11.3) | *+ Nueva muestra* | Investigador (con alta rápida), tipo ambiental, **sitio del catálogo** (con alta rápida) y punto exacto, fecha de toma, **condición y ubicación desde listas desplegables**, *conservar hasta* y **firma de recepción** obligatoria |
-| **Detalle de muestra** | Doble clic o *Ver detalle* en el listado | Investigador, sitio con coordenadas y almacenamiento; pestañas **Análisis solicitados** (asignar, ingresar, **corregir** y **ver versiones**), **Trazabilidad completa** (línea de tiempo de la muestra y de cada dato), **Historial de estados** y **Cadena de custodia**. Botón **Interpretación (IA)** para Supervisor/Administrador |
+| **Registro de muestra** (mockup 11.3) | *+ Nueva muestra* | Investigador (con alta rápida), tipo ambiental, **sitio del catálogo** (con alta rápida) y punto exacto, fecha de toma, **equipo de toma en terreno** (v6), **condición y ubicación desde listas desplegables**, *conservar hasta* y **firma de recepción** obligatoria. Al guardar, ofrece imprimir la **etiqueta del envase (50 × 25 mm, con QR)** |
+| **Detalle de muestra** | Doble clic o *Ver detalle* en el listado | Investigador, sitio con coordenadas y almacenamiento; pestañas **Análisis solicitados** (asignar, ingresar, **corregir** y **ver versiones**), **Trazabilidad completa** (línea de tiempo de la muestra y de cada dato), **Historial de estados** y **Cadena de custodia**. Botón **Imprimir etiqueta** (reimpresión, todos los roles) y **Interpretación (IA)** para Supervisor/Administrador |
 | **Sitios y mapa** (v5) | Barra lateral → *Sitios y mapa* | **Mapa** (OpenStreetMap) con los sitios coloreados según sus resultados, y tabla. Clic en el mapa = registrar un sitio en ese punto |
-| **Equipos y almacenamiento** (v5) | Barra lateral → *Equipos y almacenamiento* | Equipos con **estado de calibración** (Vigente / Por vencer / Vencida) y ubicaciones de almacenamiento. Solo el Administrador edita |
+| **Equipos y almacenamiento** (v5) | Barra lateral → *Equipos y almacenamiento* | Equipos con **uso** (Terreno / Laboratorio / Ambos, v6), **estado de calibración** (Vigente / Por vencer / Vencida) e **historial de calibraciones** (v6), y ubicaciones de almacenamiento. Solo el Administrador edita y registra calibraciones |
+| **Asistente de trazabilidad** (v6) | Barra lateral → *Asistente de trazabilidad*, o *Preguntar al asistente* en el detalle | Chatbot de solo lectura: preguntas en lenguaje natural sobre dónde, cuándo y con qué equipo se tomó una muestra, su custodia, ubicación, resultados, aprobaciones e informes, o sobre un equipo. Todos los roles |
 | **Investigadores** | Barra lateral → *Investigadores* | Registrar, editar y activar/desactivar investigadores |
 | **Parámetros y rangos** | Barra lateral → *Parámetros y rangos* | **Tabla explícita de rangos normales** por parámetro (mínimo, máximo, unidad, método/fuente). Solo el Administrador la modifica |
 | **Ingreso / corrección de resultado** (mockup 11.4) | Detalle → seleccionar análisis → *Ingresar resultado* o *Corregir resultado* | Avisa **en vivo** si el valor está fuera de rango (RF03) y si es **atípico para el sitio** (v5); exige el **equipo calibrado**. La corrección crea la **versión siguiente** y exige el motivo del cambio. Acepta coma decimal (`7,2`) |
@@ -261,11 +271,60 @@ Al iniciar sesión, la ventana se agranda y aparece el **marco principal**: una 
 |---|:-:|:-:|:-:|
 | Inicio (indicadores, alertas y tendencias) | ✅ | ✅ | ✅ |
 | Muestras (listado, registro, detalle, ingreso y corrección de resultados, custodia, trazabilidad) | ✅ | ✅ | ✅ |
+| Imprimir / reimprimir la etiqueta de una muestra | ✅ | ✅ | ✅ |
 | Investigadores · Sitios y mapa | ✅ | ✅ | ✅ |
 | Parámetros y rangos · Equipos y almacenamiento (ver) / (editar) | ✅ / — | ✅ / — | ✅ / ✅ |
+| Asistente de trazabilidad (chatbot, solo lectura) | ✅ | ✅ | ✅ |
+| Historial de calibraciones (ver) / Registrar calibración | ✅ / — | ✅ / — | ✅ / ✅ |
 | Aprobaciones · Reportes | — | ✅ | ✅ |
 | Botones *Interpretación (IA)* y *Generar informe PDF* en el detalle | — | ✅ | ✅ |
 | Usuarios | — | — | ✅ |
+
+### Etiqueta de la muestra (50 × 25 mm con QR)
+
+Cada muestra lleva una **etiqueta adhesiva** en su envase, para reconocerla en el congelador o estante sin abrir el sistema.
+
+**Cuándo se imprime**
+- **Al registrar la muestra**: después de guardar aparece *"Muestra M-2026-XXXX registrada"* con la vista previa de la etiqueta y los botones **Imprimir etiqueta** / **Ahora no**.
+- **Reimpresión**: en el *Detalle de muestra*, botón **Imprimir etiqueta** (por ejemplo, si la etiqueta se dañó o la muestra cambió de ubicación). Disponible para todos los roles.
+
+**Qué muestra**
+
+```
+┌─────────────────────────────────────────┐
+│ ▓▓▓▓▓▓▓▓▓▓    ┌───────────────┐         │
+│ ▓▓  QR  ▓▓    │Prioridad alta │         │
+│ ▓▓▓▓▓▓▓▓▓▓    └───────────────┘         │
+│ ▓▓▓▓▓▓▓▓▓▓    M-2026-0012               │
+│ ▓▓▓▓▓▓▓▓▓▓    ───────────────           │
+│ ▓▓▓▓▓▓▓▓▓▓    Macroalga                 │
+│ ▓▓▓▓▓▓▓▓▓▓    ST-001                    │
+│ ▓▓▓▓▓▓▓▓▓▓    Toma 28-10-2026           │
+│ ▓▓▓▓▓▓▓▓▓▓    Cong. -20 °C · Rack B     │
+└─────────────────────────────────────────┘
+```
+
+- **A la vista**: prioridad (arriba a la derecha), código único, tipo de muestra, código del sitio, fecha de toma y ubicación de almacenamiento (en versión corta: *Cong.*, *Ultracong.*, *Refrig.*…). Si un texto no cabe, se corta con "…".
+- **En el QR** (texto plano, una línea por dato): código, tipo, sitio completo, punto exacto, fecha y hora de toma, investigador, ubicación completa, *conservar hasta* y prioridad. Se lee con **cualquier app de cámara del celular**, sin necesidad de abrir el LIMS. Ejemplo:
+  ```
+  LIMS M-2026-0012
+  Tipo: Macroalga
+  Sitio: ST-001 Bahía Ilque, estación 3
+  Toma: 28-10-2026 09:30
+  Investigador: P. Rojas
+  Almacenar: Congelador -20 °C · Rack B
+  Conservar hasta: 28-10-2028
+  Prioridad: Alta
+  ```
+- Los datos quedan **fijos al momento de imprimir**: si se cambia la ubicación de la muestra, hay que reimprimir la etiqueta.
+
+**Cómo se imprime**
+- Se abre el **diálogo de impresión de Windows**, así que funciona con impresoras de etiquetas (Zebra, Brother, etc.) y con impresoras normales.
+- La etiqueta se dibuja a **tamaño real** (50 × 25 mm), en blanco y negro (compatible con impresoras térmicas). El QR es vectorial, nítido en impresoras de 203 y 300 dpi.
+- Con una impresora de etiquetas, configurar en el driver el papel **50 × 25 mm**. Si el papel está en vertical (25 × 50 mm), la etiqueta se **gira sola**; si es más chico, se reduce para que quepa. En una hoja normal sale en la esquina superior izquierda.
+- Para probar sin impresora: elegir **Microsoft Print to PDF** en el diálogo.
+
+La generación del QR usa la librería **ZXing** (`com.google.zxing:core`), agregada en `lims-client/pom.xml`. No requiere cambios en el backend ni en la base de datos: la etiqueta se arma con los datos que ya devuelve `POST /api/muestras` y `GET /api/muestras/{id}`.
 
 ### Estructura del cliente (lo más importante)
 
@@ -275,6 +334,7 @@ Al iniciar sesión, la ventana se agranda y aparece el **marco principal**: una 
 - `ui/Badges.java` — etiquetas de color para estados, roles y controles (se usan en las tablas con `col.setCellFactory(c -> Badges.celda())`).
 - `ui/Formularios.java` — arma los diálogos con formulario (investigador, parámetro, custodia, usuario) con el estilo de la app.
 - `ui/FormularioSitio.java` — diálogo de alta/edición de un sitio (lo usan *Sitios y mapa* y *Registro de muestra*).
+- `ui/EtiquetaMuestra.java` — etiqueta 50 × 25 mm de la muestra: diseño, código QR (ZXing), vista previa e impresión (la usan *Registro de muestra* y *Detalle de muestra*).
 - `resources/.../mapa.html` — mapa Leaflet + OpenStreetMap que `SitiosController` carga en un `WebView` (requiere internet; sin conexión la tabla sigue funcionando).
 - `styles.css` — tema completo de la app (barra lateral, tablas, botones, etiquetas). Los estilos del login están al inicio del archivo y el tema de la app al final.
 
@@ -387,6 +447,22 @@ El historial se consulta en `GET /api/muestras/{id}` y se ve en la pestaña *His
 
 **Errores de validación:** cualquier `@Valid` que falle responde 400 con un texto legible (ej. `el motivo del cambio es obligatorio`), no con el JSON técnico de Spring (`ErroresValidacionHandler`).
 
+### v6 — Equipos de terreno, historial de calibraciones y asistente de trazabilidad
+
+Responde a la retroalimentación de la presentación de la Fase 3 ("base de datos de los equipos", "diagrama de trazabilidad de toda la información" y "chatbot para consultas de trazabilidad"). El diagrama está en [`DIAGRAMA-TRAZABILIDAD.md`](DIAGRAMA-TRAZABILIDAD.md).
+
+**Equipos de terreno.** Cada equipo tiene un **uso**: `Terreno` (toma de muestras: botella Niskin, draga, cuadrante, GPS), `Laboratorio` (medición de resultados) o `Ambos` (ej. sonda multiparámetro). Al registrar una muestra se elige el **equipo de toma** (`muestras.id_equipo_toma`). El backend exige que esté activo, con la calibración vigente y que sea de terreno. Para medir un resultado solo se aceptan equipos de laboratorio. Los equipos no metrológicos (botella, draga, cuadrante) pueden quedar sin calibración: el cliente los muestra como *No requiere*.
+
+**Historial de calibraciones.** Cada calibración es una fila nueva en `equipo_calibraciones` (fecha, vencimiento, quién calibró, N° de certificado, quién la registró). Nunca se sobrescribe, así se puede demostrar qué calibración estaba vigente el día en que se tomó o midió cada muestra. La línea de tiempo de la muestra lo indica (ej. *Equipo de toma: EQ-003 · Sonda multiparámetro (calibrado el …, vigente hasta …)*).
+- `GET /api/equipos/{id}/calibraciones`: historial (cualquier usuario).
+- `POST /api/equipos/{id}/calibraciones`: registra una calibración nueva (Administrador). Si es la más reciente, pasa a ser la vigente del equipo. Editar las fechas del equipo también deja la calibración nueva en el historial.
+
+**Asistente de trazabilidad (chatbot, solo lectura).** Menú lateral → *Asistente de trazabilidad*, o botón *Preguntar al asistente* en la pestaña *Trazabilidad completa* de una muestra. Responde preguntas como "¿dónde está guardada la M-2026-0012 y con qué equipo se tomó?" o "¿qué resultados se midieron con el EQ-005?".
+- `POST /api/asistente` con `{ pregunta, historial }` → `{ respuesta, origen, consultas, aviso }`. Cualquier usuario con sesión.
+- Con `ANTHROPIC_API_KEY`, Claude (`claude-opus-5-5`) responde usando **cuatro herramientas de solo lectura** que ejecuta el backend: `buscar_muestras`, `trazabilidad_muestra` (la misma línea de tiempo de la pestaña), `consultar_equipo` (calibraciones, muestras tomadas y resultados medidos con él) y `listar_equipos`. La IA nunca ve la base de datos completa ni puede modificarla, y cada respuesta muestra qué consultas hizo.
+- Sin API key (o si el servicio falla) funciona en **modo consulta directa**: reconoce códigos de muestra (`M-2026-0012`) o de equipo (`EQ-005`) en la pregunta y muestra su trazabilidad.
+- Código: `AsistenteService`, `AsistenteController` (backend) y `asistente.fxml` / `AsistenteController` (cliente).
+
 ### Usuarios y autenticación (RF06)
 
 **Sesión con token.** `POST /api/usuarios/login` devuelve `{ token, expira, usuario }`. El cliente envía el token en **todas** las peticiones con el encabezado `Authorization: Bearer <token>`. Sin token (o vencido) la API responde **401**; con token pero sin el rol necesario, **403**. Las sesiones duran 8 horas (propiedad `lims.sesion.horas`) y se guardan en memoria: si el backend se reinicia, hay que volver a iniciar sesión.
@@ -421,6 +497,8 @@ Solo **Administrador**:
 | Interpretación del informe (borrador IA y guardar) | ❌ | ✅ | ✅ |
 | Crear / editar / desactivar análisis del catálogo | ❌ | ❌ | ✅ |
 | Crear / editar equipos (calibración) y ubicaciones | ❌ | ❌ | ✅ |
+| Registrar calibraciones de equipos (`POST /api/equipos/{id}/calibraciones`) | ❌ | ❌ | ✅ |
+| Consultar el asistente de trazabilidad (`POST /api/asistente`) | ✅ | ✅ | ✅ |
 | Administrar usuarios y contraseñas | ❌ | ❌ | ✅ |
 
 ## Migración a la versión 4 (dominio ambiental)
@@ -449,9 +527,20 @@ Crea `sitios_muestreo`, `equipos`, `ubicaciones_almacenamiento` y `resultado_ver
 
 > El script empieza con `SET NAMES utf8mb4`: sin eso, el cliente `mysql` del contenedor lee las tildes como latin1 y los nombres quedan como `BahÃ­a`. Las muestras anteriores a v5 quedan **sin sitio** (siguen mostrando su texto de procedencia) y sus resultados **sin equipo**.
 
+## Migración a la versión 6 (equipos de terreno, calibraciones y asistente)
+
+Para una **BD existente que ya tiene la v5**, ejecuten **una vez** `lims-backend/db-migrations/v6-equipos-terreno-calibraciones.sql`:
+
+```powershell
+cd lims-backend
+Get-Content db-migrations\v6-equipos-terreno-calibraciones.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+```
+
+Agrega `equipos.uso` y `muestras.id_equipo_toma`, crea `equipo_calibraciones` (con la calibración vigente de cada equipo como primera fila) y carga 4 equipos de terreno (`EQ-006` a `EQ-009`). La sonda `EQ-003` pasa a uso *Ambos*. Sin esta migración el backend falla con `Unknown column 'uso'` o `'id_equipo_toma'`. Si usan la demo, carguen después `datos-demo-v6.sql`.
+
 ### Configurar la IA (opcional)
 
-El borrador de interpretación usa Claude solo si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY` (en IntelliJ: *Edit Configurations → Environment variables*; **nunca** en `application.properties` ni en git). Sin ella todo funciona igual con el borrador por reglas, y el log del backend lo indica al arrancar (`IA: sin ANTHROPIC_API_KEY…`).
+El borrador de interpretación y el asistente de trazabilidad (v6) usan Claude solo si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY` (en IntelliJ: *Edit Configurations → Environment variables*; **nunca** en `application.properties` ni en git). Sin ella todo funciona igual con el borrador por reglas, y el log del backend lo indica al arrancar (`IA: sin ANTHROPIC_API_KEY…`).
 
 ## Problemas comunes
 
@@ -486,30 +575,36 @@ El borrador de interpretación usa Claude solo si el backend arranca con la vari
 - **VS Code marca en rojo `getNombre()`, `setApellido()`, etc. como "cannot find symbol" en una entidad (`Usuario`, `Rol`, `Centro`)**: es un falso positivo del Language Server de Java, que no reconoce los getters/setters generados por Lombok (`@Getter`/`@Setter`). No afecta la compilación real con Maven. Se puede limpiar con `Ctrl+Shift+P` → "Java: Clean Java Language Server Workspace", o instalando la extensión "Lombok Annotations Support for VS Code".
 - **`Unknown column 'id_sitio'` / `'id_equipo'` / `'version_resultado'`**: tu BD es anterior a la v5. Ejecuta `db-migrations/v5-trazabilidad-sitios-ia.sql` (sección *Migración a la versión 5*).
 - **Nombres con `Ã¡`, `Ã­`, `Â°` (tildes rotas) en sitios, equipos o ubicaciones**: el script se ejecutó sin `SET NAMES utf8mb4` (versión antigua del script). Repárenlo con `UPDATE tabla SET col = CONVERT(CAST(CONVERT(col USING latin1) AS BINARY) USING utf8mb4)` solo en las filas afectadas, o recreen la BD.
+- **`Unknown column 'uso'` / `'id_equipo_toma'` o `Table 'lims_db.equipo_calibraciones' doesn't exist`**: tu BD es anterior a la v6. Ejecuta `db-migrations/v6-equipos-terreno-calibraciones.sql` (sección *Migración a la versión 6*).
 - **400 "idEquipo es obligatorio" o "tiene la calibración vencida"**: desde la v5 cada resultado indica con qué equipo se midió, y ese equipo debe estar calibrado. El Administrador actualiza las fechas en *Equipos y almacenamiento*.
 - **400 "un dato aprobado no se puede modificar"**: es la regla de trazabilidad (ISO/IEC 17025). Solo se corrigen resultados pendientes o rechazados.
 - **El mapa de *Sitios y mapa* sale en blanco**: el mapa (Leaflet/OpenStreetMap) necesita internet. La tabla de sitios funciona igual.
 - **No aparecen tendencias ni atípicos**: la detección necesita al menos 5 resultados previos del parámetro en el sitio. Para la demo carguen `db-migrations/datos-demo-v5.sql`.
+- **`package com.google.zxing does not exist` al compilar el cliente**: Maven no descargó la librería del QR. Ejecuten `.\mvnw.cmd clean compile` con internet (la primera vez la descarga desde Maven Central).
+- **"No hay impresoras instaladas en este equipo" al imprimir la etiqueta**: Windows no tiene ninguna impresora configurada. Para probar, activen **Microsoft Print to PDF** (Configuración → Impresoras y escáneres).
+- **La etiqueta sale muy chica o en la esquina de una hoja**: es lo esperado en una impresora normal (se imprime a tamaño real, 50 × 25 mm). En una impresora de etiquetas, configuren el tamaño de papel **50 × 25 mm** en las preferencias del driver.
+- **El celular no lee el QR de la etiqueta**: en impresoras térmicas de 203 dpi el QR queda al límite por la cantidad de datos. Verifiquen la densidad/oscuridad de impresión en el driver; si sigue sin leerse, acorten los textos del QR en `EtiquetaMuestra.contenidoQr`.
 
 ## Estado de los requisitos funcionales
 
 | Requisito | Backend | Cliente JavaFX |
 |---|---|---|
-| **RF01** Registro de muestras | ✅ Con investigador, sitio y fecha de toma, almacenamiento y firma de recepción | ✅ Listado (con buscador) + registro + detalle con custodia |
-| **RF02** Ingreso de resultados | ✅ Con equipo calibrado y versiones (corrección con motivo) | ✅ Asignación de análisis + ingreso + corrección + versiones |
+| **RF01** Registro de muestras | ✅ Con investigador, sitio y fecha de toma, **equipo de toma** (v6), almacenamiento y firma de recepción | ✅ Listado (con buscador) + registro + detalle con custodia + **etiqueta 50 × 25 mm con QR** |
+| **RF02** Ingreso de resultados | ✅ Con equipo de laboratorio calibrado y versiones (corrección con motivo) | ✅ Asignación de análisis + ingreso + corrección + versiones |
 | **RF03** Validación de rangos | ✅ + detección de valores atípicos por sitio | ✅ Aviso en vivo (rango y atípico) y observaciones obligatorias |
 | **RF04** Aprobación por supervisor | ✅ Con reglas de rol, segregación y evaluación única por versión | ✅ Pantalla de Aprobaciones con versión, equipo y atípicos |
 | **RF05** Reporte PDF | ✅ OpenPDF, versionado, equipo, correcciones e interpretación revisada | ✅ Generar, vista previa, guardar e interpretación (IA) |
 | **RF06** Autenticación con roles | ✅ Sesión con token, permisos por rol en `SecurityConfig`, usuario tomado de la sesión, registro público solo como Analista | ✅ Token en todas las peticiones, vuelta al login si expira, barra lateral por rol y pantalla de Usuarios |
 
-Además: historial de estados de la muestra (ISO 17025) ✅ · **investigadores, almacenamiento y cadena de custodia firmada (v4)** ✅ · **tabla de rangos normales visible** ✅ · **v5:** trazabilidad completa del dato, sitios georreferenciados con mapa, equipos con calibración, catálogos desplegables, detección de anomalías, interpretación asistida por IA y panel de inicio ✅.
+Además: historial de estados de la muestra (ISO 17025) ✅ · **investigadores, almacenamiento y cadena de custodia firmada (v4)** ✅ · **tabla de rangos normales visible** ✅ · **v5:** trazabilidad completa del dato, sitios georreferenciados con mapa, equipos con calibración, catálogos desplegables, detección de anomalías, interpretación asistida por IA y panel de inicio ✅ · **etiqueta de la muestra con QR para el envase** ✅ · **v6:** equipos de terreno, historial de calibraciones, diagrama de trazabilidad y asistente de trazabilidad (chatbot) ✅.
 
 ### Próximos pasos
 
-1. Pruebas JUnit de los servicios (prioridad: `AnomaliaService`, `ResultadoService.corregir`, `AprobacionService`).
-2. Validar con la investigadora los **rangos reales** de los parámetros de algas y registrar su **fuente** en `metodoReferencia` (los de `datos-demo-v5.sql` son referenciales).
-3. Código QR en la etiqueta de la muestra y en el informe que lleve a su trazabilidad.
-4. Instalador (`.exe`/`.jar`), video demo y actualización del informe técnico.
+1. Pruebas JUnit de los servicios (prioridad: `AnomaliaService`, `ResultadoService.corregir`, `AprobacionService`, `EquipoService.registrarCalibracion` y el modo directo de `AsistenteService`).
+2. Probar el asistente de trazabilidad con `ANTHROPIC_API_KEY` sobre los datos de demostración (v5 + v6) antes de la presentación.
+3. Validar con la investigadora los **rangos reales** de los parámetros de algas y registrar su **fuente** en `metodoReferencia` (los de `datos-demo-v5.sql` son referenciales).
+4. Código QR en el **informe PDF** que lleve a la trazabilidad de la muestra (la **etiqueta del envase ya tiene QR** con sus datos). Más adelante, escanear el QR de la etiqueta desde el cliente para abrir el detalle de la muestra.
+5. Instalador (`.exe`/`.jar`), video demo y actualización del informe técnico.
 
 ## Estado del proyecto (seguridad)
 

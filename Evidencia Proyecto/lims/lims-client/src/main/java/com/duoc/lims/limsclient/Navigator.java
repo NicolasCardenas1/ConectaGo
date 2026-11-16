@@ -1,5 +1,6 @@
 package com.duoc.lims.limsclient;
 
+import com.duoc.lims.limsclient.controller.AsistenteController;
 import com.duoc.lims.limsclient.controller.DetalleMuestraController;
 import com.duoc.lims.limsclient.controller.MainLayoutController;
 import com.duoc.lims.limsclient.model.UsuarioResponse;
@@ -144,6 +145,15 @@ public class Navigator {
 
     public static void irAReportes() {
         mostrarEnMarco("reportes.fxml", "Informes emitidos", "reportes");
+    }
+
+    /** v6: chatbot de trazabilidad. Si viene una pregunta, se envía apenas se abre la pantalla. */
+    public static void irAAsistente(String preguntaInicial) {
+        AsistenteController controller =
+                mostrarEnMarco("asistente.fxml", "Asistente de trazabilidad", "asistente");
+        if (preguntaInicial != null && !preguntaInicial.isBlank()) {
+            controller.preguntar(preguntaInicial);
+        }
     }
 
     public static void irADetalleMuestra(int idMuestra) {

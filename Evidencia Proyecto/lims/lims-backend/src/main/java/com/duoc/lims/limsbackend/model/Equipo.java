@@ -11,6 +11,8 @@ import java.time.LocalDateTime;
 /**
  * v5 — Equipo del laboratorio con su calibración. Cada resultado indica con qué equipo se midió;
  * un equipo con la calibración vencida no puede usarse (trazabilidad metrológica, ISO/IEC 17025).
+ * v6 — También los equipos de terreno (uso): cada muestra indica con qué equipo se tomó, y cada
+ * calibración queda en el historial equipo_calibraciones.
  */
 @Entity
 @Table(name = "equipos")
@@ -18,6 +20,10 @@ import java.time.LocalDateTime;
 @Setter
 @NoArgsConstructor
 public class Equipo {
+
+    public static final String USO_TERRENO = "Terreno";
+    public static final String USO_LABORATORIO = "Laboratorio";
+    public static final String USO_AMBOS = "Ambos";
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,6 +45,10 @@ public class Equipo {
     @Column(name = "numero_serie", length = 80)
     private String numeroSerie;
 
+    /** v6: Terreno (toma de muestras), Laboratorio (análisis) o Ambos. */
+    @Column(name = "uso", nullable = false, length = 20)
+    private String uso = USO_LABORATORIO;
+
     @Column(name = "fecha_ultima_calibracion")
     private LocalDate fechaUltimaCalibracion;
 
@@ -59,5 +69,15 @@ public class Equipo {
     /** Texto legible que se guarda también en resultados.instrumento_utilizado. */
     public String getEtiqueta() {
         return codigo + " · " + nombre;
+    }
+
+    /** v6: se puede usar para tomar muestras en terreno. */
+    public boolean isUsoTerreno() {
+        return USO_TERRENO.equals(uso) || USO_AMBOS.equals(uso);
+    }
+
+    /** v6: se puede usar para medir resultados en el laboratorio. */
+    public boolean isUsoLaboratorio() {
+        return USO_LABORATORIO.equals(uso) || USO_AMBOS.equals(uso);
     }
 }

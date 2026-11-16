@@ -59,6 +59,13 @@
             <Label text="Punto exacto (opcional)" styleClass="field-name" GridPane.rowIndex="4" GridPane.columnIndex="1"/>
             <TextField fx:id="txtPunto" promptText="Ej: estación 3, intermareal, 2 m de profundidad" styleClass="form-field"
                        GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+
+            <!-- v6: equipo con que se tomó la muestra en terreno (trazabilidad de la toma) -->
+            <Label text="Equipo de toma (terreno)" styleClass="field-name" GridPane.rowIndex="6" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="cbEquipoToma" promptText="Botella Niskin, draga, cuadrante, sonda..." maxWidth="Infinity"
+                      styleClass="form-field" GridPane.rowIndex="7" GridPane.columnIndex="0"/>
+            <Label text="Solo equipos de terreno activos; uno con la calibración vencida no se puede registrar."
+                   styleClass="hint" wrapText="true" GridPane.rowIndex="7" GridPane.columnIndex="1"/>
         </GridPane>
 
         <Separator/>
