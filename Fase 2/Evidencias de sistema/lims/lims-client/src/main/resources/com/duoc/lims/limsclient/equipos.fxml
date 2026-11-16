@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- v5: equipos con calibración y ubicaciones de almacenamiento (catálogos desplegables) -->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.duoc.lims.limsclient.controller.EquiposController"
+      styleClass="page">
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <VBox spacing="3">
+            <Label text="Equipos y almacenamiento" styleClass="page-title"/>
+            <Label text="Cada resultado queda asociado al equipo calibrado con que se midió; un equipo con la calibración vencida no se puede usar"
+                   styleClass="page-subtitle" wrapText="true"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblMensaje" wrapText="true"/>
+    </HBox>
+
+    <TabPane styleClass="lims-tabs" tabClosingPolicy="UNAVAILABLE" VBox.vgrow="ALWAYS">
+        <Tab text="Equipos y calibración">
+            <VBox spacing="10" style="-fx-padding: 14 0 0 0;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Button fx:id="btnNuevoEquipo" text="+ Nuevo equipo" styleClass="btn-primary" onAction="#onNuevoEquipo"/>
+                    <Button fx:id="btnEditarEquipo" text="Editar / registrar calibración" styleClass="btn-secondary" onAction="#onEditarEquipo"/>
+                    <Button fx:id="btnEstadoEquipo" text="Dar de baja" styleClass="btn-secondary" onAction="#onEstadoEquipo"/>
+                    <Label fx:id="lblAyudaEquipos" styleClass="hint"/>
+                </HBox>
+                <TableView fx:id="tablaEquipos" styleClass="lims-table" VBox.vgrow="ALWAYS">
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                    <columns>
+                        <TableColumn fx:id="colEqCodigo" text="CÓDIGO" prefWidth="80"/>
+                        <TableColumn fx:id="colEqNombre" text="EQUIPO" prefWidth="190"/>
+                        <TableColumn fx:id="colEqMarca" text="MARCA / MODELO" prefWidth="170"/>
+                        <TableColumn fx:id="colEqSerie" text="N° SERIE" prefWidth="110"/>
+                        <TableColumn fx:id="colEqUltima" text="ÚLTIMA CALIBRACIÓN" prefWidth="130"/>
+                        <TableColumn fx:id="colEqProxima" text="PRÓXIMA CALIBRACIÓN" prefWidth="150"/>
+                        <TableColumn fx:id="colEqEstado" text="CALIBRACIÓN" prefWidth="110"/>
+                        <TableColumn fx:id="colEqActivo" text="ESTADO" prefWidth="80"/>
+                    </columns>
+                </TableView>
+            </VBox>
+        </Tab>
+        <Tab text="Ubicaciones de almacenamiento">
+            <VBox spacing="10" style="-fx-padding: 14 0 0 0;">
+                <HBox spacing="10" alignment="CENTER_LEFT">
+                    <Button fx:id="btnNuevaUbicacion" text="+ Nueva ubicación" styleClass="btn-primary" onAction="#onNuevaUbicacion"/>
+                    <Button fx:id="btnEditarUbicacion" text="Editar" styleClass="btn-secondary" onAction="#onEditarUbicacion"/>
+                    <Button fx:id="btnEstadoUbicacion" text="Desactivar" styleClass="btn-secondary" onAction="#onEstadoUbicacion"/>
+                    <Label text="Estas ubicaciones son las opciones del desplegable al registrar o trasladar una muestra" styleClass="hint"/>
+                </HBox>
+                <TableView fx:id="tablaUbicaciones" styleClass="lims-table" VBox.vgrow="ALWAYS">
+                    <columnResizePolicy>
+                        <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+                    </columnResizePolicy>
+                    <columns>
+                        <TableColumn fx:id="colUbNombre" text="UBICACIÓN" prefWidth="240"/>
+                        <TableColumn fx:id="colUbTipo" text="TIPO" prefWidth="140"/>
+                        <TableColumn fx:id="colUbTemp" text="TEMPERATURA" prefWidth="110"/>
+                        <TableColumn fx:id="colUbDesc" text="DESCRIPCIÓN" prefWidth="260"/>
+                        <TableColumn fx:id="colUbActivo" text="ESTADO" prefWidth="80"/>
+                    </columns>
+                </TableView>
+            </VBox>
+        </Tab>
+    </TabPane>
+</VBox>

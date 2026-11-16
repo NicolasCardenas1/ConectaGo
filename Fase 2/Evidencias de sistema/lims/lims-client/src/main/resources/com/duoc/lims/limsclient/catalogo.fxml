@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- Tabla explícita de rangos normales por parámetro (RF03) -->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.duoc.lims.limsclient.controller.CatalogoController"
+      styleClass="page">
+
+    <VBox spacing="3">
+        <Label text="Parámetros y rangos normales" styleClass="page-title"/>
+        <Label text="Catálogo de análisis: cada resultado se valida automáticamente contra el rango de su parámetro (RF03)"
+               styleClass="page-subtitle"/>
+    </VBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button fx:id="btnNuevo" text="+ Nuevo parámetro" styleClass="btn-primary" onAction="#onNuevo"/>
+        <Button fx:id="btnEditar" text="Editar" styleClass="btn-secondary" onAction="#onEditar"/>
+        <Button fx:id="btnEstado" text="Desactivar" styleClass="btn-secondary" onAction="#onCambiarEstado"/>
+        <CheckBox fx:id="chkInactivos" text="Mostrar inactivos"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblMensaje" wrapText="true"/>
+    </HBox>
+
+    <TableView fx:id="tabla" styleClass="lims-table" VBox.vgrow="ALWAYS">
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+        </columnResizePolicy>
+        <columns>
+            <TableColumn fx:id="colNombre" text="PARÁMETRO" prefWidth="170"/>
+            <TableColumn fx:id="colUnidad" text="UNIDAD" prefWidth="80"/>
+            <TableColumn fx:id="colMin" text="MÍNIMO NORMAL" prefWidth="110"/>
+            <TableColumn fx:id="colMax" text="MÁXIMO NORMAL" prefWidth="110"/>
+            <TableColumn fx:id="colMetodo" text="MÉTODO / REFERENCIA" prefWidth="200"/>
+            <TableColumn fx:id="colDescripcion" text="DESCRIPCIÓN" prefWidth="200"/>
+            <TableColumn fx:id="colEstado" text="ESTADO" prefWidth="90"/>
+        </columns>
+        <placeholder>
+            <Label text="El catálogo está vacío."/>
+        </placeholder>
+    </TableView>
+
+    <Label fx:id="lblAyuda" styleClass="hint" wrapText="true"/>
+</VBox>
