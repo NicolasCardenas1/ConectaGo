@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.chart.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- v5: panel de inicio — indicadores, alertas y tendencia de un parámetro por sitio -->
+<ScrollPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="com.duoc.lims.limsclient.controller.DashboardController"
+            fitToWidth="true" styleClass="transparent-scroll" style="-fx-background: #f1f5f9;">
+<VBox styleClass="page">
+
+    <HBox spacing="12" alignment="CENTER_LEFT">
+        <VBox spacing="3">
+            <Label fx:id="lblSaludo" text="Inicio" styleClass="page-title"/>
+            <Label text="Estado del laboratorio, alertas de calidad y tendencias por sitio de muestreo" styleClass="page-subtitle"/>
+        </VBox>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblMensaje" wrapText="true" maxWidth="260"/>
+        <Button text="Actualizar" styleClass="btn-secondary" onAction="#onActualizar" minWidth="-Infinity"/>
+        <Button text="+ Registrar muestra" styleClass="btn-primary" onAction="#onRegistrar" minWidth="-Infinity"/>
+    </HBox>
+
+    <!-- Indicadores -->
+    <HBox spacing="10">
+        <VBox styleClass="kpi" HBox.hgrow="ALWAYS">
+            <Label text="Muestras registradas" styleClass="kpi-label"/>
+            <Label fx:id="kpiMuestras" text="—" styleClass="kpi-valor"/>
+            <Label fx:id="kpiMuestrasSub" styleClass="kpi-sub"/>
+        </VBox>
+        <VBox styleClass="kpi" HBox.hgrow="ALWAYS">
+            <Label text="Pendientes de aprobación" styleClass="kpi-label"/>
+            <Label fx:id="kpiPendientes" text="—" styleClass="kpi-valor"/>
+            <Label text="resultados en la bandeja del supervisor" styleClass="kpi-sub"/>
+        </VBox>
+        <VBox styleClass="kpi" HBox.hgrow="ALWAYS">
+            <Label text="Fuera de rango · 30 días" styleClass="kpi-label"/>
+            <Label fx:id="kpiFueraRango" text="—" styleClass="kpi-valor"/>
+            <Label text="contra el rango normal del parámetro" styleClass="kpi-sub"/>
+        </VBox>
+        <VBox styleClass="kpi" HBox.hgrow="ALWAYS">
+            <Label text="Valores atípicos · 30 días" styleClass="kpi-label"/>
+            <Label fx:id="kpiAtipicos" text="—" styleClass="kpi-valor"/>
+            <Label text="detección automática vs. historial del sitio" styleClass="kpi-sub"/>
+        </VBox>
+        <VBox styleClass="kpi" HBox.hgrow="ALWAYS">
+            <Label text="Tiempo hasta aprobación" styleClass="kpi-label"/>
+            <Label fx:id="kpiTiempo" text="—" styleClass="kpi-valor"/>
+            <Label text="promedio desde la recepción" styleClass="kpi-sub"/>
+        </VBox>
+        <VBox styleClass="kpi" HBox.hgrow="ALWAYS">
+            <Label text="Equipos" styleClass="kpi-label"/>
+            <Label fx:id="kpiEquipos" text="—" styleClass="kpi-valor"/>
+            <Label fx:id="kpiEquiposSub" styleClass="kpi-sub"/>
+        </VBox>
+    </HBox>
+
+    <HBox spacing="14">
+        <!-- Muestras por estado -->
+        <VBox styleClass="card-panel" spacing="6" HBox.hgrow="ALWAYS" prefWidth="340" minWidth="280">
+            <Label text="Muestras por estado" styleClass="section-title"/>
+            <BarChart fx:id="graficoEstados" legendVisible="false" animated="false" prefHeight="260"
+                      styleClass="grafico" horizontalGridLinesVisible="false" barGap="2" categoryGap="8">
+                <xAxis><NumberAxis minorTickVisible="false"/></xAxis>
+                <yAxis><CategoryAxis/></yAxis>
+            </BarChart>
+        </VBox>
+
+        <!-- Alertas -->
+        <VBox styleClass="card-panel" spacing="6" HBox.hgrow="ALWAYS" prefWidth="460" minWidth="320">
+            <HBox spacing="8" alignment="CENTER_LEFT">
+                <Label text="Alertas de calidad" styleClass="section-title"/>
+                <Region HBox.hgrow="ALWAYS"/>
+                <Label text="Doble clic para abrir la muestra" styleClass="hint"/>
+            </HBox>
+            <ListView fx:id="listaAlertas" prefHeight="270" styleClass="lista-alertas">
+                <placeholder>
+                    <Label text="Sin alertas: equipos calibrados y resultados dentro de lo esperado."/>
+                </placeholder>
+            </ListView>
+        </VBox>
+    </HBox>
+
+    <!-- Tendencia -->
+    <VBox styleClass="card-panel" spacing="8">
+        <HBox spacing="10" alignment="CENTER_LEFT">
+            <Label fx:id="lblTendencia" text="Tendencia por sitio" styleClass="section-title" wrapText="true"/>
+            <Region HBox.hgrow="ALWAYS"/>
+            <Label text="Parámetro" styleClass="field-name" minWidth="-Infinity"/>
+            <ComboBox fx:id="cbParametro" prefWidth="200" minWidth="150" styleClass="form-field"/>
+            <Label text="Sitio" styleClass="field-name" minWidth="-Infinity"/>
+            <ComboBox fx:id="cbSitio" prefWidth="270" minWidth="180" styleClass="form-field"/>
+        </HBox>
+        <LineChart fx:id="graficoTendencia" legendVisible="false" animated="false" prefHeight="300"
+                   styleClass="grafico" createSymbols="true">
+            <xAxis><NumberAxis fx:id="ejeFecha" autoRanging="false" forceZeroInRange="false" minorTickVisible="false"/></xAxis>
+            <yAxis><NumberAxis fx:id="ejeValor" forceZeroInRange="false" minorTickVisible="false"/></yAxis>
+        </LineChart>
+        <FlowPane hgap="18" vgap="4" alignment="CENTER_LEFT">
+            <Label text="●  Valor medido" styleClass="leyenda-medido"/>
+            <Label text="●  Fuera del rango normal" styleClass="leyenda-fuera"/>
+            <Label text="◆  Valor atípico para el sitio" styleClass="leyenda-atipico"/>
+            <Label text="- - -  Límites del rango normal" styleClass="leyenda-rango"/>
+            <Label fx:id="lblResumenTendencia" styleClass="hint"/>
+        </FlowPane>
+    </VBox>
+</VBox>
+</ScrollPane>

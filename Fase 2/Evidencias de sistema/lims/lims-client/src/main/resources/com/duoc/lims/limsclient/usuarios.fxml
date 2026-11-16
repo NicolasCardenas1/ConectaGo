@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<!-- RF06 — Administración de usuarios (solo rol Administrador) -->
+<VBox xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="com.duoc.lims.limsclient.controller.UsuariosController"
+      styleClass="page">
+
+    <VBox spacing="3">
+        <Label text="Administración de Usuarios" styleClass="page-title"/>
+        <Label text="Crear cuentas con rol, resolver solicitudes de contraseña y activar o desactivar usuarios"
+               styleClass="page-subtitle"/>
+    </VBox>
+
+    <HBox spacing="10" alignment="CENTER_LEFT">
+        <Button text="+ Nuevo usuario" styleClass="btn-primary" onAction="#onNuevoUsuario"/>
+        <Button fx:id="btnResetear" text="Resetear contraseña" styleClass="btn-secondary" onAction="#onResetearPassword"/>
+        <Button fx:id="btnEstado" text="Desactivar" styleClass="btn-secondary" onAction="#onCambiarEstado"/>
+        <Button text="Actualizar" styleClass="btn-secondary" onAction="#onActualizar"/>
+        <Region HBox.hgrow="ALWAYS"/>
+        <Label fx:id="lblMensaje" wrapText="true"/>
+    </HBox>
+
+    <TableView fx:id="tablaUsuarios" styleClass="lims-table" VBox.vgrow="ALWAYS">
+        <columnResizePolicy>
+            <TableView fx:constant="CONSTRAINED_RESIZE_POLICY"/>
+        </columnResizePolicy>
+        <columns>
+            <TableColumn fx:id="colNombre" text="NOMBRE" prefWidth="170"/>
+            <TableColumn fx:id="colUsername" text="USUARIO" prefWidth="110"/>
+            <TableColumn fx:id="colEmail" text="EMAIL" prefWidth="190"/>
+            <TableColumn fx:id="colRol" text="ROL" prefWidth="120"/>
+            <TableColumn fx:id="colEstado" text="ESTADO" prefWidth="100"/>
+            <TableColumn fx:id="colReset" text="CONTRASEÑA" prefWidth="140"/>
+        </columns>
+        <placeholder>
+            <Label text="No hay usuarios para mostrar."/>
+        </placeholder>
+    </TableView>
+
+    <Label text="Las solicitudes de &quot;¿Olvidaste tu contraseña?&quot; aparecen como Reset solicitado. Selecciona el usuario y presiona Resetear contraseña."
+           styleClass="hint" wrapText="true"/>
+</VBox>

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!-- v5: mapa de sitios de muestreo (Leaflet + OpenStreetMap). Lo carga SitiosController en un WebView.
+     Java -> JS: cargarSitios(lista), centrarEn(id).  JS -> Java: java.seleccionarSitio(id), java.clicEnMapa(lat, lon). -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html, body, #mapa { margin: 0; height: 100%; font-family: "Segoe UI", sans-serif; background: #e2e8f0; }
+  .popup b { color: #1e293b; }
+  .popup .sub { color: #64748b; font-size: 11px; }
+  .popup .alerta { color: #b91c1c; font-weight: bold; }
+  #sin-conexion { display: none; position: absolute; inset: 0; align-items: center; justify-content: center;
+                  color: #475569; text-align: center; padding: 30px; font-size: 14px; }
+  .leyenda { background: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #334155;
+             box-shadow: 0 1px 4px rgba(0,0,0,.2); line-height: 18px; }
+  .leyenda span { display: inline-block; width: 10px; height: 10px; border-radius: 5px; margin-right: 6px; }
+</style>
+</head>
+<body>
+<div id="mapa"></div>
+<div id="sin-conexion">No se pudo cargar el mapa (se requiere conexión a internet).<br>
+  Los sitios y sus coordenadas siguen disponibles en la tabla.</div>
+<script>
+  var marcadores = {};
+  var mapa = null;
+
+  function colorSitio(s) {
+    if (!s.activo) return '#94a3b8';
+    if (s.resultadosAnomalos > 0) return '#b91c1c';
+    if (s.resultadosFueraRango > 0) return '#d97706';
+    return '#1e4f80';
+  }
+
+  function iniciar() {
+    if (typeof L === 'undefined') {
+      document.getElementById('sin-conexion').style.display = 'flex';
+      return;
+    }
+    mapa = L.map('mapa').setView([-41.6, -73.0], 9);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18, attribution: '&copy; OpenStreetMap'
+    }).addTo(mapa);
+    mapa.on('click', function (e) {
+      if (window.java) window.java.clicEnMapa(e.latlng.lat, e.latlng.lng);
+    });
+    var leyenda = L.control({position: 'bottomleft'});
+    leyenda.onAdd = function () {
+      var d = L.DomUtil.create('div', 'leyenda');
+      d.innerHTML = '<span style="background:#1e4f80"></span>Sin alertas<br>'
+        + '<span style="background:#d97706"></span>Con resultados fuera de rango<br>'
+        + '<span style="background:#b91c1c"></span>Con valores atípicos<br>'
+        + '<span style="background:#94a3b8"></span>Inactivo';
+      return d;
+    };
+    leyenda.addTo(mapa);
+  }
+
+  function cargarSitios(sitios) {
+    if (!mapa) return;
+    Object.keys(marcadores).forEach(function (k) { mapa.removeLayer(marcadores[k]); });
+    marcadores = {};
+    var limites = [];
+    sitios.forEach(function (s) {
+      var m = L.circleMarker([s.lat, s.lon], {
+        radius: 9 + Math.min(8, s.totalMuestras), color: 'white', weight: 2,
+        fillColor: colorSitio(s), fillOpacity: 0.9
+      }).addTo(mapa);
+      var alertas = '';
+      if (s.resultadosAnomalos > 0) alertas += '<div class="alerta">⚠ ' + s.resultadosAnomalos + ' valor(es) atípico(s)</div>';
+      if (s.resultadosFueraRango > 0) alertas += '<div class="alerta">' + s.resultadosFueraRango + ' resultado(s) fuera de rango</div>';
+      m.bindPopup('<div class="popup"><b>' + s.codigo + ' · ' + s.nombre + '</b><br>'
+        + '<span class="sub">' + s.tipo + (s.comuna ? ' · ' + s.comuna : '') + '</span><br>'
+        + '<span class="sub">' + s.lat.toFixed(4) + ', ' + s.lon.toFixed(4) + '</span><br>'
+        + s.totalMuestras + ' muestra(s)' + (s.ultimo ? ' · último muestreo ' + s.ultimo : '') + alertas + '</div>');
+      m.bindTooltip(s.codigo + ' · ' + s.nombre);
+      m.on('click', function () { if (window.java) window.java.seleccionarSitio(s.id); });
+      marcadores[s.id] = m;
+      limites.push([s.lat, s.lon]);
+    });
+    if (limites.length > 0) mapa.fitBounds(limites, {padding: [40, 40], maxZoom: 12});
+  }
+
+  function centrarEn(id) {
+    var m = marcadores[id];
+    if (m && mapa) { mapa.setView(m.getLatLng(), Math.max(mapa.getZoom(), 11)); m.openPopup(); }
+  }
+
+  window.onload = iniciar;
+</script>
+</body>
+</html>
