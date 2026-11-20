@@ -88,9 +88,9 @@ git clone https://github.com/NicolasCardenas1/ConectaGo.git
 cd ConectaGo
 ```
 
-> El proyecto LIMS vive dentro de este repo, en la carpeta `Evidencia Proyecto/lims/` (no en la raíz). Los comandos de las secciones siguientes (`cd lims-backend`, `cd lims-client`, etc.) se ejecutan siempre desde ahí, por ejemplo:
+> El proyecto LIMS vive dentro de este repo, en la carpeta `Fase 2/Evidencias Proyecto/Evidencias de sistema/lims/` (no en la raíz). Los comandos de las secciones siguientes (`cd lims-backend`, `cd lims-client`, etc.) se ejecutan siempre desde ahí, por ejemplo:
 > ```
-> cd "Evidencia Proyecto/lims"
+> cd "Fase 2/Evidencias Proyecto/Evidencias de sistema/lims"
 > ```
 
 ## 2. Levantar la base de datos (Docker)

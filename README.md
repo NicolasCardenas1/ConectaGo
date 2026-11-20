@@ -16,7 +16,7 @@ Aplicación de escritorio para **investigadores que realizan muestreos ambiental
 |---|---|
 | **Problema** | Hoy las muestras de algas y agua se registran en papel y planillas: se pierde quién midió qué, con qué equipo, qué valor se corrigió y por qué, y no se detectan valores anómalos a tiempo. |
 | **Usuarios** | Analista (registra, mide), Supervisor (revisa, aprueba, informa), Administrador (catálogos, equipos, usuarios). El **investigador** recibe el informe. |
-| **Entregable final** | 1) Aplicación de escritorio (JavaFX) + API (Spring Boot) + base MySQL, con instalador. 2) Base de demostración con 8 meses de historial ambiental real de formato. 3) Manual de usuario y guía técnica ([Evidencia Proyecto/lims/README.md](Evidencia%20Proyecto/lims/README.md)). 4) Video y guion de demo ([GUION-DEMO.md](Evidencia%20Proyecto/lims/GUION-DEMO.md)). 5) Informe final APT. |
+| **Entregable final** | 1) Aplicación de escritorio (JavaFX) + API (Spring Boot) + base MySQL, con instalador. 2) Base de demostración con 8 meses de historial ambiental real de formato. 3) Manual de usuario y guía técnica ([Guía técnica (lims/README.md)](Fase%202/Evidencias%20Proyecto/Evidencias%20de%20sistema/lims/README.md)). 4) Video y guion de demo ([GUION-DEMO.md](Fase%202/Evidencias%20Proyecto/Evidencias%20de%20sistema/lims/GUION-DEMO.md)). 5) Informe final APT. |
 | **Fuera de alcance** | Multi-laboratorio, app móvil de terreno, integración automática con equipos, acreditación ISO 17025 formal (el sistema está *diseñado según* sus requisitos de trazabilidad, no certificado). |
 
 ## ¿Por qué un LIMS y no una planilla Excel?
@@ -63,7 +63,7 @@ Aplicación de escritorio para **investigadores que realizan muestreos ambiental
 | **v5** | **Panel de inicio** con indicadores, alertas de calidad y **tendencias** por sitio y parámetro | ✅ |
 | **v6** | **Equipos de terreno**: cada equipo tiene un uso (Terreno / Laboratorio / Ambos) y cada muestra registra **con qué equipo se tomó** (botella Niskin, draga, cuadrante, sonda); solo equipos de laboratorio miden resultados | ✅ |
 | **v6** | **Historial de calibraciones**: cada calibración (fecha, vencimiento, quién calibró, certificado) queda registrada sin sobrescribir la anterior, y la trazabilidad indica qué calibración estaba vigente el día en que se usó el equipo | ✅ |
-| **v6** | **Diagrama de trazabilidad de toda la información**: qué dato se registra en cada etapa, en qué tabla y quién lo firma ([DIAGRAMA-TRAZABILIDAD.md](Evidencia%20Proyecto/lims/DIAGRAMA-TRAZABILIDAD.md)) | ✅ |
+| **v6** | **Diagrama de trazabilidad de toda la información**: qué dato se registra en cada etapa, en qué tabla y quién lo firma ([DIAGRAMA-TRAZABILIDAD.md](Fase%202/Evidencias%20Proyecto/Evidencias%20de%20sistema/lims/DIAGRAMA-TRAZABILIDAD.md)) | ✅ |
 | **v6** | **Asistente de trazabilidad (chatbot)**: preguntas en lenguaje natural sobre una muestra o un equipo (dónde y cuándo se tomó, con qué equipo, custodia, ubicación, resultados, aprobaciones, informes). Solo lectura, con IA (Claude) o, sin API key, por código de muestra/equipo | ✅ |
 | Extra | **Etiqueta de la muestra (50 × 25 mm)** para el envase: código, tipo, sitio, fecha de toma, almacenamiento y prioridad a la vista, y un **código QR** con el detalle completo. Se ofrece al registrar la muestra y se puede reimprimir desde el detalle | ✅ |
 
@@ -75,7 +75,7 @@ Recibida ─► En análisis ─► Resultados ingresados ─► Aprobada ─►
                                   └── corrección del analista (versión nueva, con motivo) ──┘
 ```
 
-El recorrido completo de la información (toma en terreno → registro → custodia → análisis → resultado → aprobación → interpretación → informe), con las tablas donde queda cada dato, está en el **[diagrama de trazabilidad](Evidencia%20Proyecto/lims/DIAGRAMA-TRAZABILIDAD.md)**.
+El recorrido completo de la información (toma en terreno → registro → custodia → análisis → resultado → aprobación → interpretación → informe), con las tablas donde queda cada dato, está en el **[diagrama de trazabilidad](Fase%202/Evidencias%20Proyecto/Evidencias%20de%20sistema/lims/DIAGRAMA-TRAZABILIDAD.md)**.
 
 ### Roles
 
@@ -131,17 +131,26 @@ Basado en el historial de commits del repositorio (`git log`, `git shortlog -sn`
 ```
 ConectaGo/
 ├── README.md                      ← este archivo (portada del proyecto)
-├── Fase1/
+├── Fase 1/
 │   ├── Evidencias grupales/       ← definición del proyecto APT, Carta Gantt, presentación
-│   └── Evidencias individuales/   ← autoevaluaciones
-└── Evidencia Proyecto/
-    └── lims/
-        ├── README.md              ← guía técnica completa (instalación, endpoints, problemas comunes)
-        ├── DIAGRAMA-TRAZABILIDAD.md ← flujo de la información y tablas donde queda cada dato
-        ├── GUION-DEMO.md          ← paso a paso de la presentación
-        ├── README-aiven.md        ← conexión a la base de datos compartida en la nube
-        ├── lims-backend/          ← API REST Spring Boot + esquema SQL (db-init/), migraciones (db-migrations/) y test.http
-        └── lims-client/           ← aplicación de escritorio JavaFX
+│   └── Evidencias individuales/   ← autoevaluaciones, diarios de reflexión, formativa
+├── Fase 2/
+│   ├── Evidencias grupales/       ← informes 2.4 y 2.6, Carta Gantt actualizada
+│   ├── Evidencias individuales/   ← diarios de reflexión
+│   └── Evidencias Proyecto/
+│       ├── Presentación Proyecto.pptx
+│       ├── Evidencias de documentación/
+│       └── Evidencias de sistema/
+│           └── lims/
+│               ├── README.md              ← guía técnica completa (instalación, endpoints, problemas comunes)
+│               ├── DIAGRAMA-TRAZABILIDAD.md ← flujo de la información y tablas donde queda cada dato
+│               ├── GUION-DEMO.md          ← paso a paso de la presentación
+│               ├── README-aiven.md        ← conexión a la base de datos compartida en la nube
+│               ├── lims-backend/          ← API REST Spring Boot + esquema SQL (db-init/), migraciones (db-migrations/) y test.http
+│               └── lims-client/           ← aplicación de escritorio JavaFX
+└── Fase 3/
+    ├── Evidencias grupales/       ← informe final y presentación final
+    └── Evidencias individuales/   ← diarios de reflexión
 ```
 
 ---
@@ -152,7 +161,7 @@ Requisitos: **JDK 21**, **Docker Desktop**, **Git** e IntelliJ IDEA (recomendado
 
 ```powershell
 git clone https://github.com/NicolasCardenas1/ConectaGo.git
-cd "ConectaGo/Evidencia Proyecto/lims"
+cd "ConectaGo/Fase 2/Evidencias Proyecto/Evidencias de sistema/lims"
 
 # 1) Base de datos (Docker Desktop abierto)
 cd lims-backend
@@ -168,11 +177,11 @@ cd ..\lims-client
 
 En una base de datos nueva, el backend crea el usuario administrador **`admin` / `admin123`**. Si usan una base que ya existía (por ejemplo Aiven), primero ejecuten **en orden** las migraciones `lims-backend/db-migrations/v4-dominio-ambiental.sql`, `v5-trazabilidad-sitios-ia.sql` y `v6-equipos-terreno-calibraciones.sql`. Desde ahí se crean los Supervisores y Analistas en la pantalla *Usuarios* (cambien esa contraseña al entrar).
 
-**Para una demo con datos** (tendencias, mapa y valores atípicos necesitan historial), carguen en la BD local `lims-backend/db-migrations/datos-demo-v5.sql`: crea 8 meses de muestras ambientales y los usuarios `supervisor.demo` / `super123` y `analista.demo` / `analista123`. Después carguen `datos-demo-v6.sql`, que asigna a esas muestras el equipo con que se tomaron (para que el asistente de trazabilidad pueda responderlo). El paso a paso de la presentación está en **[GUION-DEMO.md](Evidencia%20Proyecto/lims/GUION-DEMO.md)**.
+**Para una demo con datos** (tendencias, mapa y valores atípicos necesitan historial), carguen en la BD local `lims-backend/db-migrations/datos-demo-v5.sql`: crea 8 meses de muestras ambientales y los usuarios `supervisor.demo` / `super123` y `analista.demo` / `analista123`. Después carguen `datos-demo-v6.sql`, que asigna a esas muestras el equipo con que se tomaron (para que el asistente de trazabilidad pueda responderlo). El paso a paso de la presentación está en **[GUION-DEMO.md](Fase%202/Evidencias%20Proyecto/Evidencias%20de%20sistema/lims/GUION-DEMO.md)**.
 
 **IA (opcional):** si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY`, el borrador de interpretación del informe lo redacta Claude y el asistente de trazabilidad responde en lenguaje natural; sin ella, el borrador se genera por reglas, el asistente responde consultas por código (`M-2026-0012`, `EQ-005`) y todo lo demás funciona igual.
 
-➡️ La guía completa —configuración, base en la nube, endpoints de la API, datos de prueba con `test.http` y solución de problemas— está en **[Evidencia Proyecto/lims/README.md](Evidencia%20Proyecto/lims/README.md)**.
+➡️ La guía completa —configuración, base en la nube, endpoints de la API, datos de prueba con `test.http` y solución de problemas— está en **[Guía técnica (lims/README.md)](Fase%202/Evidencias%20Proyecto/Evidencias%20de%20sistema/lims/README.md)**.
 
 ---
 
