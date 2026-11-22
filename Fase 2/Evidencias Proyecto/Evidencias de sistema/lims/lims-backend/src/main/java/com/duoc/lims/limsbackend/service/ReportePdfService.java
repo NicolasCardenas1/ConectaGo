@@ -168,6 +168,22 @@ public class ReportePdfService {
         return new ReporteGenerado(pdf, nombreArchivo, version);
     }
 
+    /**
+     * Vuelve a construir el PDF de un informe ya emitido cuando su archivo no está en este equipo
+     * (se emitió en otro computador contra la base compartida, se borró la carpeta reportes/, o son
+     * datos de demostración cargados por SQL). Conserva número, emisor y fecha de la emisión original,
+     * y lo marca como copia regenerada porque se arma con los datos registrados hoy.
+     * No registra una emisión nueva, no sube la versión ni cambia el estado de la muestra.
+     */
+    @Transactional(readOnly = true)
+    public byte[] reconstruir(Reporte reporte) {
+        Muestra muestra = reporte.getMuestra();
+        List<MuestraAnalisis> analisis = muestraAnalisisRepository.findByMuestra_Id(muestra.getId());
+        String numeroInforme = muestra.getCodigoUnico() + "-v" + reporte.getVersion() + " · copia regenerada";
+        return construirPdf(muestra, analisis, reporte.getUsuarioGenerador(), numeroInforme,
+                reporte.getFechaGeneracion());
+    }
+
     // =====================================================================
     // Construcción del documento
     // =====================================================================

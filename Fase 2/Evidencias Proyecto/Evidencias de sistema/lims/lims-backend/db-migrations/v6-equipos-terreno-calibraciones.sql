@@ -13,7 +13,8 @@
 -- Para bases de datos que YA existen y ya tienen la v5. Una base nueva NO la
 -- necesita: db-init/01-schema.sql ya trae todo esto. Ejecutar UNA sola vez:
 --
---   Get-Content db-migrations\v6-equipos-terreno-calibraciones.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+--   docker cp db-migrations\v6-equipos-terreno-calibraciones.sql lims-mysql:/tmp/m.sql
+--   docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 -- =====================================================================
 
 SET NAMES utf8mb4;   -- los textos del script tienen tildes

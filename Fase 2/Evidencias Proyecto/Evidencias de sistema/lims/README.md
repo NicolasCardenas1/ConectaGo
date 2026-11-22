@@ -141,6 +141,7 @@ Notas importantes para tus compañeros:
   docker-compose up -d
   ```
   (`-v` borra también el volumen `lims-data`, no solo el contenedor).
+  > ⚠️ **`-v` borra todos los datos de su base local** (muestras, usuarios, informes). Si tienen algo propio, primero respalden con `mysqldump` y guarden el archivo fuera del repo, o mejor apliquen solo las migraciones que falten (`db-migrations/`, siempre con `docker cp`, ver `CAMBIO-DE-RUTA.md`).
 - **Usuario inicial:** con la seguridad activa (RF06), solo un Administrador puede crear usuarios con rol. Por eso, **si la BD no tiene ningún usuario**, el backend crea al arrancar el Administrador **`admin` / `admin123`** (cámbienle la contraseña desde la pantalla *Usuarios*). Desde la pantalla pública **"Crear usuario"** cualquiera puede registrarse, pero **siempre queda como Analista**. Como alternativa para pruebas vía SQL directo, puedes insertar un usuario manualmente:
 
   ```
@@ -218,7 +219,8 @@ Verificación rápida: en el log debe aparecer `Started LimsBackendApplication` 
 `lims-backend/db-migrations/datos-demo-v5.sql` carga **8 meses de historial ambiental** (32 muestras ya informadas en 4 sitios, con clorofila-a, temperatura, salinidad, pH y oxígeno disuelto), una floración algal real documentada como valor alto, y 2 muestras recibidas (`D-2026-0001/0002`) para ingresar resultados en vivo. Sin historial no hay tendencias ni detección de anomalías, así que **ejecútenlo antes de una demo** (solo en la BD local):
 
 ```powershell
-Get-Content db-migrations\datos-demo-v5.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\datos-demo-v5.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 Crea los usuarios de demostración `supervisor.demo` / `super123`, `analista.demo` / `analista123` y `admin` / `admin123` (si no existía). Es idempotente: si ya se cargó, no hace nada.
@@ -226,7 +228,8 @@ Crea los usuarios de demostración `supervisor.demo` / `super123`, `analista.dem
 **v6:** después carguen también `datos-demo-v6.sql`. Asigna a las muestras de la demo el **equipo con que se tomaron** en terreno y deja una calibración anterior en el historial de `EQ-001` y `EQ-002`, para que el asistente de trazabilidad pueda responder "¿con qué equipo se tomó?":
 
 ```powershell
-Get-Content db-migrations\datos-demo-v6.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\datos-demo-v6.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 ## 5. Levantar el cliente JavaFX
@@ -507,7 +510,8 @@ Una **BD nueva** (`docker-compose down -v` + `up -d`) ya trae todo. Para una **B
 
 ```powershell
 cd lims-backend
-Get-Content db-migrations\v4-dominio-ambiental.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\v4-dominio-ambiental.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 El script crea `investigadores` y `custodia_eventos`, agrega `muestras.id_investigador` y convierte los tipos de muestra antiguos (*Agua potable/residual → Agua dulce*, *Suelo → Sedimento*, *Sangre/Alimento → Otro*). Sin esta migración el backend falla al leer muestras (`Unknown column 'id_investigador'` o *Tipo de muestra no válido*).
@@ -520,7 +524,8 @@ Para una **BD existente que ya tiene la v4**, ejecuten **una vez** `lims-backend
 
 ```powershell
 cd lims-backend
-Get-Content db-migrations\v5-trazabilidad-sitios-ia.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\v5-trazabilidad-sitios-ia.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 Crea `sitios_muestreo`, `equipos`, `ubicaciones_almacenamiento` y `resultado_versiones` (los resultados existentes quedan como su versión 1), agrega `muestras.id_sitio` y las columnas de interpretación, `resultados.id_equipo`/`version`/anomalía y `aprobaciones.version_resultado`, y carga 6 sitios de la Región de Los Lagos, 5 equipos (uno con la calibración vencida, para la demo) y 5 ubicaciones. Sin esta migración el backend falla con `Unknown column 'id_sitio'` (o `id_equipo`, `version_resultado`).
@@ -533,7 +538,8 @@ Para una **BD existente que ya tiene la v5**, ejecuten **una vez** `lims-backend
 
 ```powershell
 cd lims-backend
-Get-Content db-migrations\v6-equipos-terreno-calibraciones.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\v6-equipos-terreno-calibraciones.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 Agrega `equipos.uso` y `muestras.id_equipo_toma`, crea `equipo_calibraciones` (con la calibración vigente de cada equipo como primera fila) y carga 4 equipos de terreno (`EQ-006` a `EQ-009`). La sonda `EQ-003` pasa a uso *Ambos*. Sin esta migración el backend falla con `Unknown column 'uso'` o `'id_equipo_toma'`. Si usan la demo, carguen después `datos-demo-v6.sql`.

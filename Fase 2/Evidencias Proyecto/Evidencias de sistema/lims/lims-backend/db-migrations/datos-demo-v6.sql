@@ -11,7 +11,8 @@
 -- Requiere la v6 (base nueva o migración v6) y datos-demo-v5.sql. Es idempotente.
 -- NO ejecutar en la base compartida (Aiven) sin acuerdo del equipo.
 --
---   Get-Content db-migrations\datos-demo-v6.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+--   docker cp db-migrations\datos-demo-v6.sql lims-mysql:/tmp/m.sql
+--   docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 -- =====================================================================
 
 SET NAMES utf8mb4;

@@ -14,7 +14,8 @@ import java.util.List;
 /**
  * RF05 — Historial de informes emitidos.
  * GET /api/reportes          lista los informes ya emitidos (más recientes primero).
- * GET /api/reportes/{id}/pdf re-descarga el PDF guardado (sin regenerar ni subir version).
+ * GET /api/reportes/{id}/pdf re-descarga el PDF guardado (sin subir version); si el archivo no está
+ *                            en este equipo, entrega una copia regenerada marcada como tal.
  */
 @RestController
 @RequestMapping("/api/reportes")

@@ -114,10 +114,20 @@ Salir:
   esté bien copiada.
 - La base de Aiven ya tiene esquema y datos: **no corras** el
   `01-schema.sql` contra ella ni la reinicialices.
-- **Versión 5:** el backend actual necesita que la base tenga las migraciones
-  `db-migrations/v4-dominio-ambiental.sql` y `db-migrations/v5-trazabilidad-sitios-ia.sql`
-  (en ese orden, una sola vez). Como la base es compartida, que **una sola persona**
-  las ejecute y avise al grupo. Con el cliente MySQL del contenedor:
-  `Get-Content db-migrations\v5-trazabilidad-sitios-ia.sql | docker exec -i lims-mysql mysql -h HOST -P PORT -u USUARIO -pCLAVE --ssl-mode=REQUIRED lims_db`
-- `db-migrations/datos-demo-v5.sql` es solo para la base **local**: no lo ejecuten en Aiven
-  sin acuerdo del equipo (crea muestras y usuarios de demostración).
+- **Versiones 4, 5 y 6:** el backend actual necesita que la base tenga las migraciones
+  `db-migrations/v4-dominio-ambiental.sql`, `db-migrations/v5-trazabilidad-sitios-ia.sql`
+  y `db-migrations/v6-equipos-terreno-calibraciones.sql` (en ese orden, cada una una
+  sola vez). Como la base es compartida, que **una sola persona** las ejecute y avise
+  al grupo. Antes, que haga un respaldo (`mysqldump`) y lo guarde **fuera del repo**.
+  Con el cliente MySQL del contenedor local, desde `lims-backend` (repetir por cada script):
+
+  ```powershell
+  docker cp db-migrations\v6-equipos-terreno-calibraciones.sql lims-mysql:/tmp/m.sql
+  docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -h HOST -P PORT -u USUARIO -pCLAVE --ssl-mode=REQUIRED lims_db < /tmp/m.sql"
+  ```
+
+  > ⚠️ **No usen `Get-Content archivo.sql | docker exec -i ...`**: PowerShell 5.1
+  > cambia las tildes por `?` al pasar el texto por la tubería y el daño **no se puede
+  > revertir** (por ejemplo, `Recepción` queda `Recepci??n` y la custodia deja de abrir).
+- `db-migrations/datos-demo-v5.sql` y `datos-demo-v6.sql` son solo para la base **local**:
+  no los ejecuten en Aiven sin acuerdo del equipo (crean muestras y usuarios de demostración).

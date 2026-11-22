@@ -16,6 +16,7 @@ import java.util.List;
 /**
  * Consulta del historial de informes emitidos (RF05). No genera PDF nuevo: lista
  * los reportes ya guardados y re-entrega el PDF que quedó en disco al emitirlos.
+ * Si el archivo no está en este equipo, entrega una copia regenerada y marcada como tal.
  */
 @Service
 public class ReporteConsultaService {
@@ -24,9 +25,11 @@ public class ReporteConsultaService {
     public record PdfGuardado(byte[] pdf, String nombreArchivo) {}
 
     private final ReporteRepository reporteRepository;
+    private final ReportePdfService reportePdfService;
 
-    public ReporteConsultaService(ReporteRepository reporteRepository) {
+    public ReporteConsultaService(ReporteRepository reporteRepository, ReportePdfService reportePdfService) {
         this.reporteRepository = reporteRepository;
+        this.reportePdfService = reportePdfService;
     }
 
     @Transactional(readOnly = true)
@@ -45,8 +48,10 @@ public class ReporteConsultaService {
 
         Path ruta = Path.of(reporte.getRutaArchivo());
         if (!Files.exists(ruta)) {
-            throw new IllegalArgumentException(
-                    "El archivo del informe ya no está disponible en el servidor que lo emitio");
+            // El archivo no está en este equipo: se entrega una copia regenerada (marcada como tal).
+            String nombre = "Informe_" + reporte.getMuestra().getCodigoUnico() + "-v" + reporte.getVersion()
+                    + "-copia.pdf";
+            return new PdfGuardado(reportePdfService.reconstruir(reporte), nombre);
         }
         try {
             byte[] bytes = Files.readAllBytes(ruta);
