@@ -140,8 +140,8 @@ public class AsistenteService {
         String pregunta = dto.getPregunta().trim();
         List<String> consultas = new ArrayList<>();
         if (cliente == null) {
-            return modoDirecto(pregunta, consultas,
-                    "IA no configurada (falta ANTHROPIC_API_KEY): se responde con consultas directas por código.");
+            // Sin clave de IA, la consulta directa es el modo normal: no se muestra aviso al usuario.
+            return modoDirecto(pregunta, consultas, null);
         }
         try {
             Optional<String> respuesta = consultarClaude(dto, consultas);
