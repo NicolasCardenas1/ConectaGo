@@ -71,6 +71,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/muestras/*/reporte").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
                         // Historial de informes y re-descarga (RF05): Supervisor o Administrador
                         .requestMatchers(HttpMethod.GET, "/api/reportes", "/api/reportes/**").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
+                        // v7: verificar un informe firmado subiendo el PDF
+                        .requestMatchers(HttpMethod.POST, "/api/reportes/verificar-archivo").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
                         // v5: interpretación de resultados para el informe (borrador IA y versión revisada)
                         .requestMatchers("/api/muestras/*/interpretacion", "/api/muestras/*/interpretacion/**")
                                 .hasAnyRole(SUPERVISOR, ADMINISTRADOR)

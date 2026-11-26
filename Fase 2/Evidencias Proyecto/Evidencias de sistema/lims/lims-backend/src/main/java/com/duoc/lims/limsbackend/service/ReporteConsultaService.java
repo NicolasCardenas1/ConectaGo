@@ -1,6 +1,8 @@
 package com.duoc.lims.limsbackend.service;
 
 import com.duoc.lims.limsbackend.dto.ReporteResponseDTO;
+import com.duoc.lims.limsbackend.dto.VerificacionInformeDTO;
+import com.duoc.lims.limsbackend.model.Usuario;
 import com.duoc.lims.limsbackend.model.Investigador;
 import com.duoc.lims.limsbackend.model.Muestra;
 import com.duoc.lims.limsbackend.model.Reporte;
@@ -59,6 +61,45 @@ public class ReporteConsultaService {
         } catch (IOException e) {
             throw new IllegalStateException("No se pudo leer el archivo del informe", e);
         }
+    }
+
+    // ---------- v7: verificación de informes firmados ----------
+
+    /** Busca el informe por el código impreso en su recuadro de firma. */
+    @Transactional(readOnly = true)
+    public VerificacionInformeDTO verificarCodigo(String codigo) {
+        String texto = codigo == null ? "" : codigo.trim().toUpperCase();
+        String limpio = texto.length() == 8 && texto.indexOf('-') < 0
+                ? texto.substring(0, 4) + "-" + texto.substring(4)   // acepta el código sin guion
+                : texto;
+        return reporteRepository.findByCodigoVerificacion(limpio)
+                .map(r -> verificacion(true, "Código válido: corresponde a un informe emitido por el laboratorio. "
+                        + "Compare el número, la fecha y el emisor con los del documento que tiene.", r))
+                .orElseGet(() -> new VerificacionInformeDTO(false,
+                        "El código " + limpio + " no corresponde a ningún informe emitido por este laboratorio.",
+                        null, null, null, null, null));
+    }
+
+    /** Compara la huella SHA-256 del archivo con la de los informes emitidos: detecta cualquier modificación. */
+    @Transactional(readOnly = true)
+    public VerificacionInformeDTO verificarArchivo(byte[] pdf) {
+        if (pdf == null || pdf.length == 0) {
+            throw new IllegalArgumentException("El archivo está vacío");
+        }
+        return reporteRepository.findFirstByHashSha256(FirmaDigitalService.sha256(pdf))
+                .map(r -> verificacion(true, "Archivo auténtico: es idéntico al informe firmado que emitió el "
+                        + "laboratorio y no fue modificado.", r))
+                .orElseGet(() -> new VerificacionInformeDTO(false,
+                        "El archivo NO coincide con ningún informe firmado: fue modificado, es una copia regenerada "
+                                + "o se emitió antes de la firma digital (v7).", null, null, null, null, null));
+    }
+
+    private VerificacionInformeDTO verificacion(boolean ok, String mensaje, Reporte r) {
+        Usuario u = r.getUsuarioGenerador();
+        return new VerificacionInformeDTO(ok, mensaje,
+                r.getMuestra().getCodigoUnico() + "-v" + r.getVersion(), r.getMuestra().getCodigoUnico(),
+                u.getNombre() + " " + u.getApellido() + " (" + u.getRol().getNombreRol() + ")",
+                r.getFechaGeneracion(), r.getCodigoVerificacion());
     }
 
     private ReporteResponseDTO aDTO(Reporte r) {

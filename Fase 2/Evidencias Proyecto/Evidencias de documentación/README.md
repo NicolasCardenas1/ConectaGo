@@ -466,6 +466,21 @@ Responde a la retroalimentación de la presentación de la Fase 3 ("base de dato
 - Sin API key (o si el servicio falla) funciona en **modo consulta directa**: reconoce códigos de muestra (`M-2026-0012`) o de equipo (`EQ-005`) en la pregunta y muestra su trazabilidad.
 - Código: `AsistenteService`, `AsistenteController` (backend) y `asistente.fxml` / `AsistenteController` (cliente).
 
+### v7 — Firma digital del informe PDF
+
+Cada informe emitido queda **firmado** de dos formas:
+
+- **Recuadro de firma visible** al final de *Validación y emisión*: quién lo emitió (nombre y rol), fecha y hora, y un **código de verificación** (ej. `7F3A-9C2K`).
+- **Firma digital con certificado** del laboratorio: firma CMS/PKCS#7 desprendida con SHA-256 y RSA (`adbe.pkcs7.detached`), la que reconoce Adobe Reader en su panel de firmas. Cualquier cambio en el archivo después de emitirlo **invalida la firma**.
+
+**Verificar un informe.** *Reportes → Verificar informe*: por **código** (dice a qué informe corresponde, quién lo emitió y cuándo) o eligiendo el **archivo PDF** (compara su huella SHA-256 con la del informe emitido: si cambió un solo byte, lo rechaza).
+- `GET /api/reportes/verificar/{codigo}` y `POST /api/reportes/verificar-archivo` (cuerpo = bytes del PDF). Supervisor o Administrador.
+- La tabla `reportes` guarda `codigo_verificacion` y `hash_sha256` (migración v7). Los informes anteriores a v7 no tienen firma; si su archivo no está en el equipo, se entrega una **copia regenerada**, firmada y marcada como copia.
+
+**El certificado.** Está en `lims-backend/firma/laboratorio.p12` (fuera de git: tiene la clave privada). Si no existe, el backend crea uno **autofirmado** la primera vez que emite un informe. Sirve para demostrar la integridad, pero Adobe avisa que la identidad *no está verificada*, y **no tiene validez legal**. Una firma electrónica avanzada (Ley 19.799) requiere un certificado de un prestador acreditado: se reemplaza el archivo y se configuran `lims.firma.almacen` y `lims.firma.clave` (esta última, como variable de entorno `LIMS_FIRMA_CLAVE`, nunca en git). Cada computador genera su propio certificado.
+
+- Código: `FirmaDigitalService` y `ReportePdfService` (backend), `ReportesController` (cliente).
+
 ### Usuarios y autenticación (RF06)
 
 **Sesión con token.** `POST /api/usuarios/login` devuelve `{ token, expira, usuario }`. El cliente envía el token en **todas** las peticiones con el encabezado `Authorization: Bearer <token>`. Sin token (o vencido) la API responde **401**; con token pero sin el rol necesario, **403**. Las sesiones duran 8 horas (propiedad `lims.sesion.horas`) y se guardan en memoria: si el backend se reinicia, hay que volver a iniciar sesión.
@@ -502,6 +517,7 @@ Solo **Administrador**:
 | Crear / editar equipos (calibración) y ubicaciones | ❌ | ❌ | ✅ |
 | Registrar calibraciones de equipos (`POST /api/equipos/{id}/calibraciones`) | ❌ | ❌ | ✅ |
 | Consultar el asistente de trazabilidad (`POST /api/asistente`) | ✅ | ✅ | ✅ |
+| Verificar un informe firmado (código o archivo PDF) | ❌ | ✅ | ✅ |
 | Administrar usuarios y contraseñas | ❌ | ❌ | ✅ |
 
 ## Migración a la versión 4 (dominio ambiental)
@@ -543,6 +559,18 @@ docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user 
 ```
 
 Agrega `equipos.uso` y `muestras.id_equipo_toma`, crea `equipo_calibraciones` (con la calibración vigente de cada equipo como primera fila) y carga 4 equipos de terreno (`EQ-006` a `EQ-009`). La sonda `EQ-003` pasa a uso *Ambos*. Sin esta migración el backend falla con `Unknown column 'uso'` o `'id_equipo_toma'`. Si usan la demo, carguen después `datos-demo-v6.sql`.
+
+## Migración a la versión 7 (firma digital de informes)
+
+Para una **BD existente que ya tiene la v6**, ejecuten **una vez** `lims-backend/db-migrations/v7-firma-digital-informes.sql`:
+
+```powershell
+cd lims-backend
+docker cp db-migrations\v7-firma-digital-informes.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
+```
+
+Agrega `reportes.codigo_verificacion` y `reportes.hash_sha256`. Sin esta migración el backend falla al listar o emitir informes (`Unknown column 'codigo_verificacion'`).
 
 ### Configurar la IA (opcional)
 

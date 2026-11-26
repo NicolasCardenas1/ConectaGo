@@ -99,6 +99,14 @@ docker exec lims-mysql mysql -u lims_user -plims_pass lims_db -e "SHOW TABLES LI
 | Aparece solo `investigadores` | Les faltan v5 y v6 | Ejecutar v5 y luego v6 |
 | No aparece `investigadores` | Base anterior a v4 | Ejecutar v4, v5 y v6, en ese orden |
 
+**v7 (firma digital de informes):** revisen también
+
+```powershell
+docker exec lims-mysql mysql -u lims_user -plims_pass lims_db -e "SHOW COLUMNS FROM reportes LIKE 'codigo_verificacion';"
+```
+
+Si no aparece nada, ejecuten `v7-firma-digital-informes.sql` **al final**, después de v6 (mismo comando de abajo). Sin ella falla la pantalla *Reportes* con `Unknown column 'codigo_verificacion'`.
+
 **Ejecutar las migraciones** (cada una **una sola vez**, en orden; para la v4 cambien el nombre por `v4-dominio-ambiental.sql`):
 
 > ⚠️ Usen **exactamente** estos comandos. El antiguo `Get-Content archivo.sql | docker exec -i ...` cambia las tildes por `?` en PowerShell y el daño **no se puede revertir** (la custodia deja de abrir con *"Tipo de evento de custodia no válido"*).

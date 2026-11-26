@@ -82,6 +82,8 @@ Demo de 12 minutos pensada para responder, en vivo, cada punto de la retroalimen
 
 - *Interpretación (IA)* → *Generar borrador con IA*: Claude (o las reglas, si no hay API key) redacta una interpretación a partir de los resultados, rangos y atípicos. **El supervisor la revisa y la edita**; el sistema registra que la validó él.
 - *Generar informe PDF*: sitio con coordenadas, **equipo y calibración** por resultado, versión `(v2)`, **historial de correcciones**, **interpretación** con la nota "generado con IA, revisado y validado por…", cadena de custodia.
+- **Firma digital**: al final del informe, el recuadro *Firmado electrónicamente* con el **código de verificación**. En Adobe Reader, el panel de firmas muestra que el documento está firmado y no fue modificado (el certificado es de demostración, por eso Adobe avisa que la identidad no está verificada).
+- *Reportes → Verificar informe*: escribir el código → "Código válido". Elegir el PDF → "Archivo auténtico". **Mensaje clave:** si alguien cambia un valor en el PDF, el sistema lo detecta; en un Excel o un Word, no.
 
 ## Paso 8 — Cierre (30 s)
 
