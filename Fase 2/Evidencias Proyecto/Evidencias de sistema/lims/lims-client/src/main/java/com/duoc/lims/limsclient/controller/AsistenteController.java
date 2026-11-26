@@ -26,10 +26,12 @@ import java.util.List;
 public class AsistenteController {
 
     private static final List<String> SUGERENCIAS = List.of(
-            "¿Qué muestras se tomaron en Bahía Ilque?",
+            "Resumen del laboratorio",
+            "¿Qué resultados faltan por aprobar?",
             "¿Qué equipos tienen la calibración vencida o por vencer?",
-            "¿Qué resultados se midieron con el EQ-005?",
-            "¿Qué muestras están pendientes de aprobación?");
+            "Resultados fuera de rango",
+            "¿Qué muestras se tomaron en Bahía Ilque?",
+            "Salinidad en Bahía Ilque");
 
     @FXML private FlowPane panelSugerencias;
     @FXML private ScrollPane scrollChat;
@@ -109,9 +111,14 @@ public class AsistenteController {
     }
 
     private void bienvenida() {
-        agregarBurbuja("Hola. Puedo contarte la historia completa de una muestra o de un equipo a partir de lo "
-                + "registrado en el LIMS. Escribe, por ejemplo, el código de una muestra (M-2026-0012) o de un "
-                + "equipo (EQ-003), o pregunta por un sitio o un investigador.", false, null);
+        agregarBurbuja("Hola. Respondo con lo registrado en el LIMS. Puedes preguntarme por:\n"
+                + "- Una muestra por su código (H-2026-0001): dónde está guardada, con qué equipo se tomó, "
+                + "quién la aprobó... y seguir preguntando sin repetir el código.\n"
+                + "- Un equipo (EQ-005) o los equipos con calibración vencida.\n"
+                + "- Pendientes de aprobación, resultados fuera de rango, valores atípicos, rechazos y correcciones.\n"
+                + "- Muestras por sitio, tipo, estado, investigador o fecha, y valores de un parámetro "
+                + "(\"salinidad en Bahía Ilque\").\n"
+                + "Escribe \"ayuda\" para ver más ejemplos.", false, null);
     }
 
     private void setEsperando(boolean valor) {
