@@ -188,6 +188,8 @@ public class DashboardController {
             serie.getData().add(new XYChart.Data<>(estados.get(i).getValue(), Badges.textoVisible(estados.get(i).getKey())));
         }
         graficoEstados.getData().setAll(serie);
+        ejeEnteros((NumberAxis) graficoEstados.getXAxis(),
+                estados.stream().mapToLong(Map.Entry::getValue).max().orElse(0));
         for (XYChart.Data<Number, String> dato : serie.getData()) {
             Tooltip.install(dato.getNode(), tooltip(dato.getYValue() + ": " + dato.getXValue() + " muestra(s)"));
         }
@@ -263,6 +265,43 @@ public class DashboardController {
         if (alerta) {
             kpi.getStyleClass().add("kpi-valor-alerta");
         }
+    }
+
+    /**
+     * Eje de conteos: solo números enteros, con un paso "redondo" (1, 2, 5, 10, 20, 50…) para que
+     * haya como máximo unas 8 marcas, y el máximo ajustado a ese paso.
+     */
+    private static void ejeEnteros(NumberAxis eje, long maximo) {
+        long paso = 1;
+        while (maximo / paso > 8) {
+            long siguiente = paso * 2;
+            if (maximo / siguiente <= 8) {
+                paso = siguiente;
+                break;
+            }
+            siguiente = paso * 5;
+            if (maximo / siguiente <= 8) {
+                paso = siguiente;
+                break;
+            }
+            paso *= 10;
+        }
+        eje.setAutoRanging(false);
+        eje.setLowerBound(0);
+        eje.setUpperBound(Math.max(paso, (maximo + paso - 1) / paso * paso));
+        eje.setTickUnit(paso);
+        eje.setMinorTickCount(0);
+        eje.setTickLabelFormatter(new StringConverter<>() {
+            @Override
+            public String toString(Number n) {
+                return String.valueOf(Math.round(n.doubleValue()));
+            }
+
+            @Override
+            public Number fromString(String s) {
+                return Long.parseLong(s);
+            }
+        });
     }
 
     private Tooltip tooltip(String texto) {
