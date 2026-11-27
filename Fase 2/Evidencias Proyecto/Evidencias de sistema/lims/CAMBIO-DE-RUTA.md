@@ -107,6 +107,8 @@ docker exec lims-mysql mysql -u lims_user -plims_pass lims_db -e "SHOW COLUMNS F
 
 Si no aparece nada, ejecuten `v7-firma-digital-informes.sql` **al final**, después de v6 (mismo comando de abajo). Sin ella falla la pantalla *Reportes* con `Unknown column 'codigo_verificacion'`.
 
+**v8 (catálogo de análisis ambientales):** ejecuten también `v8-catalogo-analisis-ambientales.sql` después de la v7. Se puede repetir sin problema. Quita *Hemograma Completo* de la lista de análisis y agrega 10 análisis ambientales y 6 equipos de laboratorio (EQ-010 a EQ-015).
+
 **Ejecutar las migraciones** (cada una **una sola vez**, en orden; para la v4 cambien el nombre por `v4-dominio-ambiental.sql`):
 
 > ⚠️ Usen **exactamente** estos comandos. El antiguo `Get-Content archivo.sql | docker exec -i ...` cambia las tildes por `?` en PowerShell y el daño **no se puede revertir** (la custodia deja de abrir con *"Tipo de evento de custodia no válido"*).

@@ -572,6 +572,18 @@ docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user 
 
 Agrega `reportes.codigo_verificacion` y `reportes.hash_sha256`. Sin esta migración el backend falla al listar o emitir informes (`Unknown column 'codigo_verificacion'`).
 
+## Migración a la versión 8 (catálogo de análisis ambientales)
+
+Ejecuten **una vez** `lims-backend/db-migrations/v8-catalogo-analisis-ambientales.sql` (si se repite no duplica nada):
+
+```powershell
+cd lims-backend
+docker cp db-migrations\v8-catalogo-analisis-ambientales.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
+```
+
+Desactiva *Hemograma Completo* (análisis clínico; no se borra para no romper la historia de muestras antiguas, solo deja de aparecer en *Agregar análisis*) y agrega 10 análisis ambientales: nitrato, fosfato, amonio, silicato, turbidez, conductividad eléctrica, sólidos suspendidos totales, coliformes fecales, materia orgánica en sedimento y biomasa de macroalgas. Sus rangos normales son **referenciales**: se ajustan en *Parámetros y rangos*. También agrega 6 equipos de laboratorio con su calibración: turbidímetro (EQ-010), conductímetro (EQ-011), estufa de secado (EQ-012), balanza de precisión (EQ-013), mufla (EQ-014) e incubadora para coliformes (EQ-015). Nitrato, fosfato, amonio y silicato se miden con el espectrofotómetro EQ-004.
+
 ### Configurar la IA (opcional)
 
 El borrador de interpretación y el asistente de trazabilidad (v6) usan Claude solo si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY` (en IntelliJ: *Edit Configurations → Environment variables*; **nunca** en `application.properties` ni en git). Sin ella todo funciona igual con el borrador por reglas, y el log del backend lo indica al arrancar (`IA: sin ANTHROPIC_API_KEY…`).
