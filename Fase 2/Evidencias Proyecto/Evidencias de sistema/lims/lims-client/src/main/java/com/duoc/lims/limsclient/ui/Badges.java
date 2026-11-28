@@ -20,21 +20,29 @@ public final class Badges {
         return etiqueta;
     }
 
-    /** Clase CSS de color según el estado. */
+    /**
+     * Clase CSS de color según el estado. Significado de los colores (IEC 60073 / ISO 3864, ver styles.css):
+     * verde = normal o aprobado, ámbar = condición anormal o precaución, rojo = falla o acción obligatoria,
+     * azul = en curso, gris = neutro, morado = cerrado (informado). El texto siempre acompaña al color.
+     */
     public static String claseColor(String estado) {
         if (estado == null) {
             return "badge-gris";
         }
         return switch (estado) {
-            case "Recibida", "Pendiente" -> "badge-amarillo";
+            case "Recibida", "Pendiente" -> "badge-gris";          // estado inicial normal: neutro, no alerta
             case "En analisis", "En proceso", "Resultados ingresados", "Completado" -> "badge-azul";
             case "Aprobada", "Aprobado", "En rango" -> "badge-verde";
-            case "Rechazada", "Rechazado", "Fuera de rango" -> "badge-rojo";
-            case "Reportada", "Administrador" -> "badge-morado";
+            case "Rechazada", "Rechazado" -> "badge-rojo";
+            case "Fuera de rango" -> "badge-amarillo";             // condición anormal (no es una falla)
+            case "Reportada" -> "badge-morado";
+            // roles: mismos colores que la barra lateral de cada rol (MainLayoutController)
+            case "Administrador" -> "badge-morado";
+            case "Analista" -> "badge-azul";
+            case "Supervisor" -> "badge-cian";
             case "Activo" -> "badge-verde";
-            case "Inactivo", "Analista" -> "badge-gris";
+            case "Inactivo" -> "badge-gris";
             case "Reset solicitado" -> "badge-amarillo";
-            case "Supervisor" -> "badge-azul";
             // v5: calibración de equipos y detección de anomalías
             case "Vigente" -> "badge-verde";
             case "Por vencer", "Sin registro" -> "badge-amarillo";

@@ -14,6 +14,13 @@ public interface ReporteRepository extends JpaRepository<Reporte, Integer> {
     /** Historial de informes emitidos, mas recientes primero (RF05). */
     List<Reporte> findAllByOrderByFechaGeneracionDesc();
 
+    // v7: verificación de informes firmados
+    boolean existsByCodigoVerificacion(String codigoVerificacion);
+
+    Optional<Reporte> findByCodigoVerificacion(String codigoVerificacion);
+
+    Optional<Reporte> findFirstByHashSha256(String hashSha256);
+
     /** v5: informes de una muestra (línea de tiempo de trazabilidad). */
     List<Reporte> findByMuestra_IdOrderByVersionAsc(Integer idMuestra);
 }

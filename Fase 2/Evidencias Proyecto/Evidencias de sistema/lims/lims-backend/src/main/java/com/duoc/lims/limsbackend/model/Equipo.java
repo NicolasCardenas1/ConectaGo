@@ -61,7 +61,11 @@ public class Equipo {
     @Column(name = "fecha_creacion", nullable = false, insertable = false, updatable = false)
     private LocalDateTime fechaCreacion;
 
-    /** Vencida = la próxima calibración ya pasó. Sin fecha registrada se considera no vencida. */
+    /**
+     * Vencida = la próxima calibración ya pasó. Sin fecha registrada no cuenta como vencida (los
+     * equipos de terreno como botellas o cuadrantes no se calibran), pero para medir resultados
+     * {@code EquipoService.validarParaAnalisis} exige una calibración registrada.
+     */
     public boolean isCalibracionVencida() {
         return fechaProximaCalibracion != null && fechaProximaCalibracion.isBefore(LocalDate.now());
     }

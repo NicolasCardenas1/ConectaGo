@@ -74,8 +74,9 @@ public class ReportePdfService {
     private static final Color TEXTO = new Color(0x1E, 0x29, 0x3B);
     private static final Color VERDE_FONDO = new Color(0xDC, 0xFC, 0xE7);
     private static final Color VERDE_TEXTO = new Color(0x16, 0x65, 0x34);
-    private static final Color ROJO_FONDO = new Color(0xFE, 0xE2, 0xE2);
-    private static final Color ROJO_TEXTO = new Color(0x99, 0x1B, 0x1B);
+    // "Fuera de rango" es una condición anormal, no una falla: ámbar (IEC 60073 / ISO 3864), igual que en el LIMS
+    private static final Color AMBAR_FONDO = new Color(0xFE, 0xF3, 0xC7);
+    private static final Color AMBAR_TEXTO = new Color(0x92, 0x40, 0x0E);
 
     private static final Font F_TITULO_LAB = new Font(Font.HELVETICA, 15, Font.BOLD, AZUL);
     private static final Font F_NORMAL = new Font(Font.HELVETICA, 9, Font.NORMAL, TEXTO);
@@ -100,7 +101,11 @@ public class ReportePdfService {
     private final EstadoMuestraService estadoMuestraService;
     private final CustodiaEventoRepository custodiaRepository;
     private final ResultadoVersionRepository versionRepository;
+    private final FirmaDigitalService firmaDigitalService;
     private final Path carpetaReportes;
+
+    /** v7: datos del bloque de firma visible. {@code copia} = copia regenerada (no es el archivo original). */
+    private record DatosFirma(String codigoVerificacion, boolean copia) {}
 
     public ReportePdfService(MuestraRepository muestraRepository,
                              UsuarioRepository usuarioRepository,
@@ -111,7 +116,9 @@ public class ReportePdfService {
                              EstadoMuestraService estadoMuestraService,
                              CustodiaEventoRepository custodiaRepository,
                              ResultadoVersionRepository versionRepository,
+                             FirmaDigitalService firmaDigitalService,
                              @Value("${lims.reportes.dir:reportes}") String carpetaReportes) {
+        this.firmaDigitalService = firmaDigitalService;
         this.muestraRepository = muestraRepository;
         this.usuarioRepository = usuarioRepository;
         this.muestraAnalisisRepository = muestraAnalisisRepository;
@@ -149,7 +156,12 @@ public class ReportePdfService {
         String numeroInforme = muestra.getCodigoUnico() + "-v" + version;
         LocalDateTime emision = LocalDateTime.now();
 
-        byte[] pdf = construirPdf(muestra, analisis, usuario, numeroInforme, emision);
+        // v7: código de verificación impreso + firma digital con el certificado del laboratorio
+        String codigo = nuevoCodigoUnico();
+        byte[] borrador = construirPdf(muestra, analisis, usuario, numeroInforme, emision,
+                new DatosFirma(codigo, false));
+        byte[] pdf = firmaDigitalService.firmar(borrador, firmante(usuario, "Emisión del informe " + numeroInforme),
+                calendario(emision));
 
         String nombreArchivo = "Informe_" + numeroInforme + ".pdf";
         Path ruta = guardarEnDisco(nombreArchivo, pdf);
@@ -159,6 +171,8 @@ public class ReportePdfService {
         reporte.setUsuarioGenerador(usuario);
         reporte.setRutaArchivo(ruta.toAbsolutePath().toString());
         reporte.setVersion(version);
+        reporte.setCodigoVerificacion(codigo);
+        reporte.setHashSha256(FirmaDigitalService.sha256(pdf));
         reporteRepository.save(reporte);
 
         // La muestra pasa a "Reportada" (si ya lo estaba, no se duplica el historial).
@@ -168,12 +182,49 @@ public class ReportePdfService {
         return new ReporteGenerado(pdf, nombreArchivo, version);
     }
 
+    /**
+     * Vuelve a construir el PDF de un informe ya emitido cuando su archivo no está en este equipo
+     * (se emitió en otro computador contra la base compartida, se borró la carpeta reportes/, o son
+     * datos de demostración cargados por SQL). Conserva número, emisor y fecha de la emisión original,
+     * y lo marca como copia regenerada porque se arma con los datos registrados hoy.
+     * No registra una emisión nueva, no sube la versión ni cambia el estado de la muestra.
+     */
+    @Transactional(readOnly = true)
+    public byte[] reconstruir(Reporte reporte) {
+        Muestra muestra = reporte.getMuestra();
+        List<MuestraAnalisis> analisis = muestraAnalisisRepository.findByMuestra_Id(muestra.getId());
+        String numeroInforme = muestra.getCodigoUnico() + "-v" + reporte.getVersion() + " · copia regenerada";
+        byte[] borrador = construirPdf(muestra, analisis, reporte.getUsuarioGenerador(), numeroInforme,
+                reporte.getFechaGeneracion(), new DatosFirma(reporte.getCodigoVerificacion(), true));
+        // La copia también se firma (el laboratorio certifica que la generó), indicando que es una copia.
+        return firmaDigitalService.firmar(borrador, firmante(reporte.getUsuarioGenerador(),
+                "Copia regenerada del informe " + muestra.getCodigoUnico() + "-v" + reporte.getVersion()),
+                calendario(LocalDateTime.now()));
+    }
+
+    private FirmaDigitalService.Firmante firmante(Usuario u, String razon) {
+        return new FirmaDigitalService.Firmante(nombre(u), u.getRol().getNombreRol(), razon);
+    }
+
+    private static java.util.Calendar calendario(LocalDateTime fecha) {
+        return java.util.GregorianCalendar.from(fecha.atZone(java.time.ZoneId.systemDefault()));
+    }
+
+    /** Código de verificación que no se repite entre informes. */
+    private String nuevoCodigoUnico() {
+        String codigo;
+        do {
+            codigo = firmaDigitalService.nuevoCodigoVerificacion();
+        } while (reporteRepository.existsByCodigoVerificacion(codigo));
+        return codigo;
+    }
+
     // =====================================================================
     // Construcción del documento
     // =====================================================================
 
     private byte[] construirPdf(Muestra muestra, List<MuestraAnalisis> analisis, Usuario emisor,
-                                String numeroInforme, LocalDateTime emision) {
+                                String numeroInforme, LocalDateTime emision, DatosFirma datosFirma) {
         ByteArrayOutputStream salida = new ByteArrayOutputStream();
         Document doc = new Document(PageSize.A4, 40, 40, 40, 55);
         try {
@@ -226,6 +277,7 @@ public class ReportePdfService {
 
             doc.add(seccion(n + ". Validación y emisión"));
             doc.add(validacion(validadores, emisor, emision));
+            doc.add(bloqueFirma(emisor, emision, datosFirma));
 
             Paragraph nota = new Paragraph(
                     "Los resultados de este informe se refieren únicamente a la muestra recibida y analizada. "
@@ -507,6 +559,47 @@ public class ReportePdfService {
         return t;
     }
 
+    /**
+     * v7: recuadro de firma electrónica visible. El archivo además va firmado digitalmente con el
+     * certificado del laboratorio (ver FirmaDigitalService), lo que se comprueba en el lector de PDF.
+     */
+    private PdfPTable bloqueFirma(Usuario emisor, LocalDateTime emision, DatosFirma datos) {
+        PdfPTable t = new PdfPTable(1);
+        t.setWidthPercentage(62);
+        t.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        t.setSpacingBefore(14);
+
+        PdfPCell c = new PdfPCell();
+        c.setBorderColor(AZUL);
+        c.setBorderWidth(1.2f);
+        c.setPadding(9);
+        c.addElement(new Paragraph("FIRMADO ELECTRÓNICAMENTE", F_ETIQUETA));
+        Paragraph quien = new Paragraph(nombre(emisor), new Font(Font.HELVETICA, 12, Font.BOLD, AZUL));
+        quien.setSpacingBefore(3);
+        c.addElement(quien);
+        c.addElement(new Paragraph(emisor.getRol().getNombreRol() + " · " + emision.format(FECHA_HORA), F_NORMAL));
+        if (datos.codigoVerificacion() != null) {
+            Paragraph codigo = new Paragraph();
+            codigo.setSpacingBefore(5);
+            codigo.add(new Phrase("Código de verificación: ", F_NORMAL));
+            codigo.add(new Phrase(datos.codigoVerificacion(), new Font(Font.COURIER, 11, Font.BOLD, TEXTO)));
+            c.addElement(codigo);
+        }
+        String nota = datos.copia()
+                ? "Copia regenerada a partir de los datos registrados: no es el archivo original emitido. "
+                  + "Va firmada digitalmente por el laboratorio al momento de generarla."
+                : "Documento firmado digitalmente con el certificado del laboratorio: cualquier modificación "
+                  + "del archivo invalida la firma (se comprueba en el panel de firmas del lector de PDF).";
+        if (datos.codigoVerificacion() != null) {
+            nota += " La autenticidad se puede verificar en el LIMS (Reportes → Verificar informe).";
+        }
+        Paragraph p = new Paragraph(nota, F_NOTA);
+        p.setSpacingBefore(5);
+        c.addElement(p);
+        t.addCell(c);
+        return t;
+    }
+
     // ---------- celdas ----------
 
     private void par(PdfPTable t, String etiqueta, String valor) {
@@ -538,9 +631,9 @@ public class ReportePdfService {
     }
 
     private PdfPCell celdaControl(boolean dentroRango) {
-        Font f = new Font(Font.HELVETICA, 8, Font.BOLD, dentroRango ? VERDE_TEXTO : ROJO_TEXTO);
+        Font f = new Font(Font.HELVETICA, 8, Font.BOLD, dentroRango ? VERDE_TEXTO : AMBAR_TEXTO);
         PdfPCell c = new PdfPCell(new Phrase(dentroRango ? "En rango" : "Fuera de rango", f));
-        c.setBackgroundColor(dentroRango ? VERDE_FONDO : ROJO_FONDO);
+        c.setBackgroundColor(dentroRango ? VERDE_FONDO : AMBAR_FONDO);
         c.setBorderColor(GRIS_BORDE);
         c.setPadding(5);
         c.setHorizontalAlignment(Element.ALIGN_CENTER);

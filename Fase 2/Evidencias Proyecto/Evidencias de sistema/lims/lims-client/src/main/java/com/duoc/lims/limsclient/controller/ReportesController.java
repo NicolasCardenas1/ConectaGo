@@ -2,6 +2,7 @@ package com.duoc.lims.limsclient.controller;
 
 import com.duoc.lims.limsclient.Navigator;
 import com.duoc.lims.limsclient.model.ReporteResumen;
+import com.duoc.lims.limsclient.model.VerificacionInforme;
 import com.duoc.lims.limsclient.service.ApiClient;
 import javafx.application.Platform;
 import javafx.beans.property.SimpleStringProperty;
@@ -9,12 +10,20 @@ import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
 import javafx.collections.transformation.FilteredList;
 import javafx.fxml.FXML;
+import javafx.geometry.Insets;
+import javafx.geometry.Pos;
 import javafx.scene.control.Button;
+import javafx.scene.control.ButtonType;
+import javafx.scene.control.Dialog;
 import javafx.scene.control.Label;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.layout.HBox;
+import javafx.scene.layout.Region;
+import javafx.scene.layout.VBox;
+import javafx.stage.FileChooser;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -103,6 +112,99 @@ public class ReportesController {
         hilo.start();
     }
 
+    /**
+     * v7: verifica un informe firmado. Por código (el impreso en el recuadro de firma) o por archivo
+     * (compara la huella SHA-256 del PDF con la del informe emitido: detecta cualquier modificación).
+     */
+    @FXML
+    private void onVerificar() {
+        TextField codigo = new TextField();
+        codigo.setPromptText("Ej: 7F3A-9C2K");
+        codigo.setPrefWidth(160);
+        Button porCodigo = new Button("Verificar código");
+        porCodigo.getStyleClass().add("btn-primary");
+        Button porArchivo = new Button("Elegir archivo PDF…");
+        porArchivo.getStyleClass().add("btn-secondary");
+        Label resultado = new Label("Escribe el código de verificación del informe o elige el archivo PDF que recibiste.");
+        resultado.setWrapText(true);
+        resultado.setMaxWidth(520);
+        resultado.setMinHeight(Region.USE_PREF_SIZE);
+
+        HBox fila = new HBox(8, new Label("Código:"), codigo, porCodigo, porArchivo);
+        fila.setAlignment(Pos.CENTER_LEFT);
+        VBox contenido = new VBox(14, fila, resultado);
+        contenido.setPadding(new Insets(6, 4, 0, 4));
+        contenido.setPrefWidth(560);
+
+        Dialog<Void> d = new Dialog<>();
+        d.setTitle("LIMS - Verificar informe");
+        d.setHeaderText("Verificar la autenticidad de un informe firmado");
+        d.getDialogPane().setContent(contenido);
+        d.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        d.initOwner(tabla.getScene().getWindow());
+        d.getDialogPane().getStylesheets().addAll(tabla.getScene().getStylesheets());
+
+        porCodigo.setOnAction(e -> {
+            if (codigo.getText() == null || codigo.getText().isBlank()) {
+                mostrarVerificacion(resultado, null, "Escribe el código que aparece en el recuadro de firma.");
+                return;
+            }
+            verificarEnSegundoPlano(resultado, () -> apiClient.verificarInformePorCodigo(codigo.getText()));
+        });
+        codigo.setOnAction(e -> porCodigo.fire());
+        porArchivo.setOnAction(e -> {
+            FileChooser fc = new FileChooser();
+            fc.setTitle("Elegir informe PDF");
+            fc.getExtensionFilters().add(new FileChooser.ExtensionFilter("Informes PDF", "*.pdf"));
+            java.io.File archivo = fc.showOpenDialog(d.getDialogPane().getScene().getWindow());
+            if (archivo != null) {
+                verificarEnSegundoPlano(resultado,
+                        () -> apiClient.verificarInformePorArchivo(Files.readAllBytes(archivo.toPath())));
+            }
+        });
+        d.showAndWait();
+    }
+
+    @FunctionalInterface
+    private interface Verificacion {
+        VerificacionInforme ejecutar() throws Exception;
+    }
+
+    private void verificarEnSegundoPlano(Label resultado, Verificacion accion) {
+        resultado.setStyle("");
+        resultado.setText("Verificando…");
+        Thread hilo = new Thread(() -> {
+            try {
+                VerificacionInforme v = accion.ejecutar();
+                Platform.runLater(() -> mostrarVerificacion(resultado, v, null));
+            } catch (Exception ex) {
+                Platform.runLater(() -> mostrarVerificacion(resultado, null, "No se pudo verificar: " + ex.getMessage()));
+            }
+        });
+        hilo.setDaemon(true);
+        hilo.start();
+    }
+
+    private void mostrarVerificacion(Label resultado, VerificacionInforme v, String error) {
+        if (v == null) {
+            resultado.setStyle("-fx-text-fill: #dc2626;");
+            resultado.setText(error);
+            return;
+        }
+        StringBuilder sb = new StringBuilder(v.autentico() ? "✔ " : "✘ ").append(v.mensaje());
+        if (v.numeroInforme() != null) {
+            sb.append("\n\nInforme N° ").append(v.numeroInforme())
+                    .append("\nEmitido por: ").append(v.emitidoPor())
+                    .append("\nFecha de emisión: ").append(fecha(v.fechaEmision()));
+            if (v.codigoVerificacion() != null) {
+                sb.append("\nCódigo de verificación: ").append(v.codigoVerificacion());
+            }
+        }
+        resultado.setStyle(v.autentico() ? "-fx-text-fill: #166534; -fx-font-weight: bold;"
+                : "-fx-text-fill: #b91c1c; -fx-font-weight: bold;");
+        resultado.setText(sb.toString());
+    }
+
     private void cargar() {
         Thread hilo = new Thread(() -> {
             try {
@@ -139,7 +241,7 @@ public class ReportesController {
     }
 
     private void mostrarOk(String m) {
-        lblMensaje.setStyle("-fx-text-fill: #16a34a;");
+        lblMensaje.setStyle("-fx-text-fill: #15803d;");
         lblMensaje.setText(m);
     }
 }

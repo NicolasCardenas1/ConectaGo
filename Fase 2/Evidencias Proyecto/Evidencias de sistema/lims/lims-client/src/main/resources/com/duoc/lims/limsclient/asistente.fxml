@@ -11,7 +11,7 @@
     <HBox spacing="12" alignment="CENTER_LEFT">
         <VBox spacing="3">
             <Label text="Asistente de trazabilidad" styleClass="page-title"/>
-            <Label text="Pregunta por una muestra o un equipo: dónde se tomó, con qué equipo, cuándo, quién la custodió, dónde está guardada, quién aprobó..."
+            <Label text="Pregunta por una muestra, un equipo, un sitio o un investigador; por pendientes de aprobación, resultados fuera de rango, atípicos, rechazos o informes."
                    styleClass="page-subtitle" wrapText="true"/>
         </VBox>
         <Region HBox.hgrow="ALWAYS"/>
@@ -28,7 +28,7 @@
     <VBox spacing="6" styleClass="card-panel">
         <HBox spacing="10" alignment="CENTER_LEFT">
             <TextField fx:id="txtPregunta" HBox.hgrow="ALWAYS" styleClass="form-field"
-                       promptText="Ej: ¿Dónde está guardada la M-2026-0012 y con qué equipo se tomó?"
+                       promptText="Ej: ¿Dónde está guardada la H-2026-0013?  ·  ¿Qué falta por aprobar?  ·  pH en Isla Tenglo"
                        onAction="#onEnviar"/>
             <Button fx:id="btnEnviar" text="Preguntar" styleClass="btn-primary" onAction="#onEnviar"/>
         </HBox>

@@ -38,4 +38,12 @@ public class Reporte {
 
     @Column(name = "version", nullable = false)
     private Integer version;
+
+    /** v7: código impreso en el informe para verificarlo en el LIMS (null en informes anteriores a v7). */
+    @Column(name = "codigo_verificacion", length = 9, unique = true)
+    private String codigoVerificacion;
+
+    /** v7: huella SHA-256 del PDF firmado tal como se emitió (detecta cualquier modificación del archivo). */
+    @Column(name = "hash_sha256", length = 64)
+    private String hashSha256;
 }

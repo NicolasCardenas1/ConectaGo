@@ -141,6 +141,7 @@ Notas importantes para tus compañeros:
   docker-compose up -d
   ```
   (`-v` borra también el volumen `lims-data`, no solo el contenedor).
+  > ⚠️ **`-v` borra todos los datos de su base local** (muestras, usuarios, informes). Si tienen algo propio, primero respalden con `mysqldump` y guarden el archivo fuera del repo, o mejor apliquen solo las migraciones que falten (`db-migrations/`, siempre con `docker cp`, ver `CAMBIO-DE-RUTA.md`).
 - **Usuario inicial:** con la seguridad activa (RF06), solo un Administrador puede crear usuarios con rol. Por eso, **si la BD no tiene ningún usuario**, el backend crea al arrancar el Administrador **`admin` / `admin123`** (cámbienle la contraseña desde la pantalla *Usuarios*). Desde la pantalla pública **"Crear usuario"** cualquiera puede registrarse, pero **siempre queda como Analista**. Como alternativa para pruebas vía SQL directo, puedes insertar un usuario manualmente:
 
   ```
@@ -218,7 +219,8 @@ Verificación rápida: en el log debe aparecer `Started LimsBackendApplication` 
 `lims-backend/db-migrations/datos-demo-v5.sql` carga **8 meses de historial ambiental** (32 muestras ya informadas en 4 sitios, con clorofila-a, temperatura, salinidad, pH y oxígeno disuelto), una floración algal real documentada como valor alto, y 2 muestras recibidas (`D-2026-0001/0002`) para ingresar resultados en vivo. Sin historial no hay tendencias ni detección de anomalías, así que **ejecútenlo antes de una demo** (solo en la BD local):
 
 ```powershell
-Get-Content db-migrations\datos-demo-v5.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\datos-demo-v5.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 Crea los usuarios de demostración `supervisor.demo` / `super123`, `analista.demo` / `analista123` y `admin` / `admin123` (si no existía). Es idempotente: si ya se cargó, no hace nada.
@@ -226,7 +228,8 @@ Crea los usuarios de demostración `supervisor.demo` / `super123`, `analista.dem
 **v6:** después carguen también `datos-demo-v6.sql`. Asigna a las muestras de la demo el **equipo con que se tomaron** en terreno y deja una calibración anterior en el historial de `EQ-001` y `EQ-002`, para que el asistente de trazabilidad pueda responder "¿con qué equipo se tomó?":
 
 ```powershell
-Get-Content db-migrations\datos-demo-v6.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\datos-demo-v6.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 ## 5. Levantar el cliente JavaFX
@@ -449,7 +452,7 @@ El historial se consulta en `GET /api/muestras/{id}` y se ve en la pestaña *His
 
 ### v6 — Equipos de terreno, historial de calibraciones y asistente de trazabilidad
 
-Responde a la retroalimentación de la presentación de la Fase 3 ("base de datos de los equipos", "diagrama de trazabilidad de toda la información" y "chatbot para consultas de trazabilidad"). El diagrama está en [`DIAGRAMA-TRAZABILIDAD.md`](DIAGRAMA-TRAZABILIDAD.md).
+Responde a la retroalimentación de la presentación de la Fase 3 ("base de datos de los equipos", "diagrama de trazabilidad de toda la información" y "chatbot para consultas de trazabilidad"). El diagrama está en [`DIAGRAMA-TRAZABILIDAD.md`](../Evidencias%20de%20sistema/lims/DIAGRAMA-TRAZABILIDAD.md).
 
 **Equipos de terreno.** Cada equipo tiene un **uso**: `Terreno` (toma de muestras: botella Niskin, draga, cuadrante, GPS), `Laboratorio` (medición de resultados) o `Ambos` (ej. sonda multiparámetro). Al registrar una muestra se elige el **equipo de toma** (`muestras.id_equipo_toma`). El backend exige que esté activo, con la calibración vigente y que sea de terreno. Para medir un resultado solo se aceptan equipos de laboratorio. Los equipos no metrológicos (botella, draga, cuadrante) pueden quedar sin calibración: el cliente los muestra como *No requiere*.
 
@@ -462,6 +465,21 @@ Responde a la retroalimentación de la presentación de la Fase 3 ("base de dato
 - Con `ANTHROPIC_API_KEY`, Claude (`claude-opus-5-5`) responde usando **cuatro herramientas de solo lectura** que ejecuta el backend: `buscar_muestras`, `trazabilidad_muestra` (la misma línea de tiempo de la pestaña), `consultar_equipo` (calibraciones, muestras tomadas y resultados medidos con él) y `listar_equipos`. La IA nunca ve la base de datos completa ni puede modificarla, y cada respuesta muestra qué consultas hizo.
 - Sin API key (o si el servicio falla) funciona en **modo consulta directa**: reconoce códigos de muestra (`M-2026-0012`) o de equipo (`EQ-005`) en la pregunta y muestra su trazabilidad.
 - Código: `AsistenteService`, `AsistenteController` (backend) y `asistente.fxml` / `AsistenteController` (cliente).
+
+### v7 — Firma digital del informe PDF
+
+Cada informe emitido queda **firmado** de dos formas:
+
+- **Recuadro de firma visible** al final de *Validación y emisión*: quién lo emitió (nombre y rol), fecha y hora, y un **código de verificación** (ej. `7F3A-9C2K`).
+- **Firma digital con certificado** del laboratorio: firma CMS/PKCS#7 desprendida con SHA-256 y RSA (`adbe.pkcs7.detached`), la que reconoce Adobe Reader en su panel de firmas. Cualquier cambio en el archivo después de emitirlo **invalida la firma**.
+
+**Verificar un informe.** *Reportes → Verificar informe*: por **código** (dice a qué informe corresponde, quién lo emitió y cuándo) o eligiendo el **archivo PDF** (compara su huella SHA-256 con la del informe emitido: si cambió un solo byte, lo rechaza).
+- `GET /api/reportes/verificar/{codigo}` y `POST /api/reportes/verificar-archivo` (cuerpo = bytes del PDF). Supervisor o Administrador.
+- La tabla `reportes` guarda `codigo_verificacion` y `hash_sha256` (migración v7). Los informes anteriores a v7 no tienen firma; si su archivo no está en el equipo, se entrega una **copia regenerada**, firmada y marcada como copia.
+
+**El certificado.** Está en `lims-backend/firma/laboratorio.p12` (fuera de git: tiene la clave privada). Si no existe, el backend crea uno **autofirmado** la primera vez que emite un informe. Sirve para demostrar la integridad, pero Adobe avisa que la identidad *no está verificada*, y **no tiene validez legal**. Una firma electrónica avanzada (Ley 19.799) requiere un certificado de un prestador acreditado: se reemplaza el archivo y se configuran `lims.firma.almacen` y `lims.firma.clave` (esta última, como variable de entorno `LIMS_FIRMA_CLAVE`, nunca en git). Cada computador genera su propio certificado.
+
+- Código: `FirmaDigitalService` y `ReportePdfService` (backend), `ReportesController` (cliente).
 
 ### Usuarios y autenticación (RF06)
 
@@ -499,6 +517,7 @@ Solo **Administrador**:
 | Crear / editar equipos (calibración) y ubicaciones | ❌ | ❌ | ✅ |
 | Registrar calibraciones de equipos (`POST /api/equipos/{id}/calibraciones`) | ❌ | ❌ | ✅ |
 | Consultar el asistente de trazabilidad (`POST /api/asistente`) | ✅ | ✅ | ✅ |
+| Verificar un informe firmado (código o archivo PDF) | ❌ | ✅ | ✅ |
 | Administrar usuarios y contraseñas | ❌ | ❌ | ✅ |
 
 ## Migración a la versión 4 (dominio ambiental)
@@ -507,7 +526,8 @@ Una **BD nueva** (`docker-compose down -v` + `up -d`) ya trae todo. Para una **B
 
 ```powershell
 cd lims-backend
-Get-Content db-migrations\v4-dominio-ambiental.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\v4-dominio-ambiental.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 El script crea `investigadores` y `custodia_eventos`, agrega `muestras.id_investigador` y convierte los tipos de muestra antiguos (*Agua potable/residual → Agua dulce*, *Suelo → Sedimento*, *Sangre/Alimento → Otro*). Sin esta migración el backend falla al leer muestras (`Unknown column 'id_investigador'` o *Tipo de muestra no válido*).
@@ -520,7 +540,8 @@ Para una **BD existente que ya tiene la v4**, ejecuten **una vez** `lims-backend
 
 ```powershell
 cd lims-backend
-Get-Content db-migrations\v5-trazabilidad-sitios-ia.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\v5-trazabilidad-sitios-ia.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 Crea `sitios_muestreo`, `equipos`, `ubicaciones_almacenamiento` y `resultado_versiones` (los resultados existentes quedan como su versión 1), agrega `muestras.id_sitio` y las columnas de interpretación, `resultados.id_equipo`/`version`/anomalía y `aprobaciones.version_resultado`, y carga 6 sitios de la Región de Los Lagos, 5 equipos (uno con la calibración vencida, para la demo) y 5 ubicaciones. Sin esta migración el backend falla con `Unknown column 'id_sitio'` (o `id_equipo`, `version_resultado`).
@@ -533,10 +554,59 @@ Para una **BD existente que ya tiene la v5**, ejecuten **una vez** `lims-backend
 
 ```powershell
 cd lims-backend
-Get-Content db-migrations\v6-equipos-terreno-calibraciones.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+docker cp db-migrations\v6-equipos-terreno-calibraciones.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
 ```
 
 Agrega `equipos.uso` y `muestras.id_equipo_toma`, crea `equipo_calibraciones` (con la calibración vigente de cada equipo como primera fila) y carga 4 equipos de terreno (`EQ-006` a `EQ-009`). La sonda `EQ-003` pasa a uso *Ambos*. Sin esta migración el backend falla con `Unknown column 'uso'` o `'id_equipo_toma'`. Si usan la demo, carguen después `datos-demo-v6.sql`.
+
+## Migración a la versión 7 (firma digital de informes)
+
+Para una **BD existente que ya tiene la v6**, ejecuten **una vez** `lims-backend/db-migrations/v7-firma-digital-informes.sql`:
+
+```powershell
+cd lims-backend
+docker cp db-migrations\v7-firma-digital-informes.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
+```
+
+Agrega `reportes.codigo_verificacion` y `reportes.hash_sha256`. Sin esta migración el backend falla al listar o emitir informes (`Unknown column 'codigo_verificacion'`).
+
+## Migración a la versión 8 (catálogo de análisis ambientales)
+
+Ejecuten **una vez** `lims-backend/db-migrations/v8-catalogo-analisis-ambientales.sql` (si se repite no duplica nada):
+
+```powershell
+cd lims-backend
+docker cp db-migrations\v8-catalogo-analisis-ambientales.sql lims-mysql:/tmp/m.sql
+docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
+```
+
+Desactiva *Hemograma Completo* (análisis clínico; no se borra para no romper la historia de muestras antiguas, solo deja de aparecer en *Agregar análisis*) y agrega 10 análisis ambientales: nitrato, fosfato, amonio, silicato, turbidez, conductividad eléctrica, sólidos suspendidos totales, coliformes fecales, materia orgánica en sedimento y biomasa de macroalgas. Sus rangos normales son **referenciales**: se ajustan en *Parámetros y rangos*. También agrega 6 equipos de laboratorio con su calibración: turbidímetro (EQ-010), conductímetro (EQ-011), estufa de secado (EQ-012), balanza de precisión (EQ-013), mufla (EQ-014) e incubadora para coliformes (EQ-015). Nitrato, fosfato, amonio y silicato se miden con el espectrofotómetro EQ-004.
+
+## Versión 9: QR con enlace, colores según ISO y color por rol (sin migración de BD)
+
+La v9 **no cambia la base de datos**. Basta con actualizar el código y volver a compilar el backend y el cliente.
+
+**Código QR de la etiqueta.** El QR ya no guarda solo texto: ahora tiene un enlace a una página de solo lectura (`/m/{código}?k=firma`) que muestra el estado **actual** de la muestra, sus análisis (los valores aparecen solo cuando están aprobados) y el informe emitido. La firma (HMAC-SHA256) impide ver otras muestras adivinando su código. La clave se crea sola en `lims-backend/firma/secreto-qr.txt`, que no se sube a git.
+
+- **Celular en la misma red que el PC:** funciona sin hacer nada más. El enlace usa la IP local del PC. Puede ser necesario permitir el puerto 8080 en el firewall de Windows. En las redes institucionales (Wi-Fi de Duoc) los equipos no se ven entre sí, así que este caso no funciona.
+- **Cualquier celular, en cualquier red (por ejemplo, la comisión):** instalen el túnel una vez con `winget install --id Cloudflare.cloudflared -e`. Luego, **con el backend iniciado**, ejecuten en otra ventana:
+
+  ```powershell
+  cd lims-backend
+  powershell -ExecutionPolicy Bypass -File .\iniciar-tunel-qr.ps1
+  ```
+
+  El script crea una dirección `https://xxxx.trycloudflare.com` y el backend la toma en menos de 30 segundos. Desde internet **solo** se abre la página del QR: el login y la API responden 404 (`AccesoExternoFilter`). La dirección cambia cada vez que se inicia el túnel, así que hay que generar o imprimir las etiquetas **después** de iniciarlo. La ventana del túnel debe quedar abierta.
+
+**Colores según ISO.**
+
+- Los colores de estado siguen ISO 3864 / IEC 60073: verde = normal o aprobado, ámbar = condición anormal (fuera de rango, por vencer), rojo = falla o acción obligatoria (rechazado, atípico, calibración vencida), azul = en curso, gris = neutro (Recibida, Pendiente), morado = cerrado (Reportada). Son iguales en el LIMS, el gráfico, el mapa, el informe PDF y la página del QR.
+- El color nunca es el único indicador (ISO 9241-112): las etiquetas llevan texto y, en el gráfico, el fuera de rango es un cuadrado y el atípico un rombo.
+- Todos los textos tienen un contraste de 4,5:1 o más (ISO/IEC 40500).
+
+**Color según el rol.** La barra lateral muestra una franja y una etiqueta con el color del rol de quien ingresó: Analista azul, Supervisor petróleo, Administrador violeta. Para los roles no se usan rojo, amarillo ni verde porque esos colores ya significan estados, y el nombre del rol siempre aparece escrito junto al color.
 
 ### Configurar la IA (opcional)
 

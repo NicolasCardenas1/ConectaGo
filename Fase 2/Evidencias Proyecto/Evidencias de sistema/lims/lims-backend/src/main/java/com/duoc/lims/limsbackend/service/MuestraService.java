@@ -57,6 +57,7 @@ public class MuestraService {
     private final CustodiaService custodiaService;
     private final SitioService sitioService;
     private final EquipoService equipoService;
+    private final EnlaceQrService enlaceQrService;
 
     public MuestraService(MuestraRepository muestraRepository,
                           CentroRepository centroRepository,
@@ -70,7 +71,8 @@ public class MuestraService {
                           InvestigadorRepository investigadorRepository,
                           CustodiaService custodiaService,
                           SitioService sitioService,
-                          EquipoService equipoService) {
+                          EquipoService equipoService,
+                          EnlaceQrService enlaceQrService) {
         this.muestraRepository = muestraRepository;
         this.centroRepository = centroRepository;
         this.usuarioRepository = usuarioRepository;
@@ -84,6 +86,7 @@ public class MuestraService {
         this.custodiaService = custodiaService;
         this.sitioService = sitioService;
         this.equipoService = equipoService;
+        this.enlaceQrService = enlaceQrService;
     }
 
     @Transactional
@@ -234,7 +237,8 @@ public class MuestraService {
                         : m.getUsuarioInterpretacion().getNombre() + " " + m.getUsuarioInterpretacion().getApellido(),
                 m.getFechaInterpretacion(),
                 m.getEquipoToma() == null ? null : m.getEquipoToma().getCodigo(),
-                m.getEquipoToma() == null ? null : m.getEquipoToma().getNombre()
+                m.getEquipoToma() == null ? null : m.getEquipoToma().getNombre(),
+                enlaceQrService.enlace(m.getCodigoUnico())
         );
     }
 

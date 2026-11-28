@@ -37,5 +37,10 @@ application-aiven.properties
 ### Informes PDF generados por el backend (RF05) ###
 reportes/
 
+### v7: certificado de firma digital del laboratorio (clave privada) ###
+firma/
+*.p12
+*.pfx
+
 # Script local de datos de demo (no versionado)
 seed-demo.sql

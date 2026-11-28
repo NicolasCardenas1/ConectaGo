@@ -396,6 +396,8 @@ CREATE TABLE reportes (
     fecha_generacion     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
     ruta_archivo         VARCHAR(255) NOT NULL,   -- ubicación/URL del PDF generado
     version              INT NOT NULL DEFAULT 1,   -- permite regenerar sin perder el historial anterior
+    codigo_verificacion  VARCHAR(9) NULL UNIQUE,   -- v7: código impreso en el informe para verificarlo
+    hash_sha256          VARCHAR(64) NULL,           -- v7: huella del PDF firmado (detecta modificaciones)
     CONSTRAINT fk_reporte_muestra  FOREIGN KEY (id_muestra) REFERENCES muestras(id_muestra),
     CONSTRAINT fk_reporte_usuario  FOREIGN KEY (id_usuario_generador) REFERENCES usuarios(id_usuario)
 ) ENGINE=InnoDB;

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<!-- Selector de coordenadas para el formulario de sitio (Leaflet + OpenStreetMap). Lo carga FormularioSitio en un WebView.
+     Java -> JS: ponerMarcador(lat, lon, centrar).  JS -> Java: java.ubicar(lat, lon).
+     El buscador usa Nominatim (OpenStreetMap) solo cuando el usuario busca un lugar. -->
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  html, body, #mapa { margin: 0; height: 100%; font-family: "Segoe UI", sans-serif; background: #e2e8f0; }
+  #sin-conexion { display: none; position: absolute; inset: 0; align-items: center; justify-content: center;
+                  color: #475569; text-align: center; padding: 30px; font-size: 13px; }
+  .buscador { background: white; padding: 6px; border-radius: 6px; box-shadow: 0 1px 4px rgba(0,0,0,.25);
+              font-size: 12px; width: 250px; }
+  .buscador form { display: flex; gap: 4px; margin: 0; }
+  .buscador input { flex: 1; padding: 4px 6px; border: 1px solid #cbd5e1; border-radius: 4px; font-size: 12px; }
+  .buscador button { padding: 4px 8px; border: 0; border-radius: 4px; background: #1e4f80; color: white;
+                     font-size: 12px; cursor: pointer; }
+  .buscador .estado { color: #64748b; margin-top: 4px; }
+  .buscador .estado:empty { display: none; }
+  .ayuda { background: rgba(255,255,255,.92); padding: 4px 8px; border-radius: 6px; font-size: 11px; color: #334155;
+           box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+</style>
+</head>
+<body>
+<div id="mapa"></div>
+<div id="sin-conexion">No se pudo cargar el mapa (se requiere conexión a internet).<br>
+  Puedes escribir la latitud y la longitud a mano en el formulario.</div>
+<script>
+  var mapa = null, marcador = null, estado = null;
+
+  function iniciar() {
+    if (typeof L === 'undefined') {
+      document.getElementById('sin-conexion').style.display = 'flex';
+      return;
+    }
+    mapa = L.map('mapa').setView([-41.6, -73.0], 8);
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      maxZoom: 18, attribution: '&copy; OpenStreetMap'
+    }).addTo(mapa);
+
+    mapa.on('click', function (e) { fijar(e.latlng.lat, e.latlng.lng); });
+
+    var buscador = L.control({position: 'topright'});
+    buscador.onAdd = function () {
+      var d = L.DomUtil.create('div', 'buscador');
+      d.innerHTML = '<form><input id="q" placeholder="Buscar lugar (ej: Carelmapu)"><button>Buscar</button></form>'
+        + '<div class="estado" id="estado"></div>';
+      L.DomEvent.disableClickPropagation(d);
+      L.DomEvent.disableScrollPropagation(d);
+      d.querySelector('form').onsubmit = function (ev) { ev.preventDefault(); buscar(document.getElementById('q').value); };
+      return d;
+    };
+    buscador.addTo(mapa);
+    estado = document.getElementById('estado');
+
+    var ayuda = L.control({position: 'bottomleft'});
+    ayuda.onAdd = function () {
+      var d = L.DomUtil.create('div', 'ayuda');
+      d.innerHTML = 'Haz clic en el mapa para fijar el punto; puedes arrastrar el marcador.';
+      return d;
+    };
+    ayuda.addTo(mapa);
+  }
+
+  /** Clic o arrastre: mueve el marcador y avisa a Java para llenar los campos. */
+  function fijar(lat, lon) {
+    ponerMarcador(lat, lon, false);
+    if (window.java) window.java.ubicar(lat, lon);
+  }
+
+  /** Llamado desde Java cuando se escriben las coordenadas (o al abrir un sitio existente). */
+  function ponerMarcador(lat, lon, centrar) {
+    if (!mapa) return;
+    if (!marcador) {
+      marcador = L.marker([lat, lon], {draggable: true}).addTo(mapa);
+      marcador.on('dragend', function () {
+        var p = marcador.getLatLng();
+        if (window.java) window.java.ubicar(p.lat, p.lng);
+      });
+    } else {
+      marcador.setLatLng([lat, lon]);
+    }
+    if (centrar) mapa.setView([lat, lon], Math.max(mapa.getZoom(), 12));
+  }
+
+  function buscar(texto) {
+    texto = (texto || '').trim();
+    if (!texto) return;
+    estado.textContent = 'Buscando…';
+    var x = new XMLHttpRequest();
+    x.open('GET', 'https://nominatim.openstreetmap.org/search?format=json&limit=1&accept-language=es&countrycodes=cl&q='
+      + encodeURIComponent(texto));
+    x.onload = function () {
+      var r = [];
+      try { r = JSON.parse(x.responseText); } catch (e) {}
+      if (x.status !== 200 || !r.length) { estado.textContent = 'No se encontró "' + texto + '".'; return; }
+      var b = r[0].boundingbox;
+      mapa.fitBounds([[+b[0], +b[2]], [+b[1], +b[3]]], {maxZoom: 14});
+      estado.textContent = r[0].display_name.split(',').slice(0, 3).join(',') + ' — haz clic en el punto exacto.';
+    };
+    x.onerror = function () { estado.textContent = 'No se pudo buscar (¿sin conexión?).'; };
+    x.send();
+  }
+
+  window.onload = iniciar;
+</script>
+</body>
+</html>

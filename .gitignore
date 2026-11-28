@@ -1,1 +1,23 @@
 .idea/
+
+# Protección a nivel de repositorio: vale aunque el sistema cambie de carpeta.
+# (Al mover lims/, los .gitignore internos se mueven con él y lo que quedó en
+#  la ruta vieja deja de estar ignorado.)
+
+# Credenciales y entorno local: NUNCA se suben
+application-aiven.properties
+application-local.properties
+.env
+
+# Informes PDF que genera el backend en cada equipo
+**/lims-backend/reportes/
+
+# Certificado de firma digital del laboratorio (contiene la clave privada): NUNCA se sube
+**/lims-backend/firma/
+*.p12
+*.pfx
+
+# Compilados de Maven e IntelliJ
+target/
+*.iml
+*.iws

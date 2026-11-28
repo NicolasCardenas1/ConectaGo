@@ -191,12 +191,20 @@ public class EquipoService {
         return e;
     }
 
-    /** v6: equipo para medir un resultado en el laboratorio (activo, calibrado y de uso Laboratorio/Ambos). */
+    /**
+     * v6: equipo para medir un resultado en el laboratorio (activo, de uso Laboratorio/Ambos y con una
+     * calibración vigente registrada). Un instrumento de medición sin calibración registrada no da
+     * trazabilidad metrológica, así que no se acepta.
+     */
     public Equipo validarParaAnalisis(Integer idEquipo) {
         Equipo e = validarParaUso(idEquipo);
         if (!e.isUsoLaboratorio()) {
             throw new IllegalArgumentException("El equipo " + e.getEtiqueta()
                     + " es de terreno: no se puede usar para medir resultados en el laboratorio");
+        }
+        if (e.getFechaProximaCalibracion() == null) {
+            throw new IllegalArgumentException("El equipo " + e.getEtiqueta()
+                    + " no tiene una calibración registrada. Registre su calibración o use otro equipo.");
         }
         return e;
     }
@@ -215,6 +223,12 @@ public class EquipoService {
         if (dto.getFechaUltimaCalibracion() != null && dto.getFechaProximaCalibracion() != null
                 && dto.getFechaProximaCalibracion().isBefore(dto.getFechaUltimaCalibracion())) {
             throw new IllegalArgumentException("La próxima calibración no puede ser anterior a la última");
+        }
+        // Borrar las fechas de un equipo que ya tenía calibración lo "desbloquearía" aunque estuviera vencida.
+        if (e.getFechaProximaCalibracion() != null
+                && (dto.getFechaUltimaCalibracion() == null || dto.getFechaProximaCalibracion() == null)) {
+            throw new IllegalArgumentException("No se puede borrar la calibración registrada del equipo "
+                    + e.getEtiqueta() + ". Si cambió, registre una calibración nueva.");
         }
         e.setNombre(dto.getNombre().trim());
         e.setMarca(vacioANull(dto.getMarca()));

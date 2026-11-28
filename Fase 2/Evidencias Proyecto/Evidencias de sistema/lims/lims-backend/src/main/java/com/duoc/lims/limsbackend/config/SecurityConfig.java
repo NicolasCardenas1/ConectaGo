@@ -1,5 +1,6 @@
 package com.duoc.lims.limsbackend.config;
 
+import com.duoc.lims.limsbackend.security.AccesoExternoFilter;
 import com.duoc.lims.limsbackend.security.SesionService;
 import com.duoc.lims.limsbackend.security.TokenAuthFilter;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +28,9 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
  * | Registrar calibraciones de equipos (v6)        |    no    |     no     |      sí       |
  * | Chatbot de trazabilidad, solo lectura (v6)     |    sí    |     sí     |      sí       |
  * | Administrar usuarios y contraseñas             |    no    |     no     |      sí       |
+ *
+ * v9: la página {@code /m/{codigo}} que abre el QR de la etiqueta es pública y de solo lectura, pero
+ * exige la firma del enlace impreso (ver EnlaceQrService).
  */
 @Configuration
 public class SecurityConfig {
@@ -62,6 +66,8 @@ public class SecurityConfig {
                                 "/api/usuarios/login",
                                 "/api/usuarios/registro",
                                 "/api/usuarios/solicitar-reset").permitAll()
+                        // v9: página que abre el QR de la etiqueta (solo lectura; exige la firma del enlace)
+                        .requestMatchers(HttpMethod.GET, "/m/*").permitAll()
 
                         // Cualquier usuario con sesión
                         .requestMatchers(HttpMethod.POST, "/api/usuarios/logout").authenticated()
@@ -71,6 +77,8 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/muestras/*/reporte").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
                         // Historial de informes y re-descarga (RF05): Supervisor o Administrador
                         .requestMatchers(HttpMethod.GET, "/api/reportes", "/api/reportes/**").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
+                        // v7: verificar un informe firmado subiendo el PDF
+                        .requestMatchers(HttpMethod.POST, "/api/reportes/verificar-archivo").hasAnyRole(SUPERVISOR, ADMINISTRADOR)
                         // v5: interpretación de resultados para el informe (borrador IA y versión revisada)
                         .requestMatchers("/api/muestras/*/interpretacion", "/api/muestras/*/interpretacion/**")
                                 .hasAnyRole(SUPERVISOR, ADMINISTRADOR)
@@ -92,7 +100,9 @@ public class SecurityConfig {
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().denyAll()
                 )
-                .addFilterBefore(new TokenAuthFilter(sesionService), UsernamePasswordAuthenticationFilter.class);
+                .addFilterBefore(new TokenAuthFilter(sesionService), UsernamePasswordAuthenticationFilter.class)
+                // v9: desde internet (túnel del QR) solo se abre la página /m/{codigo}
+                .addFilterBefore(new AccesoExternoFilter(), TokenAuthFilter.class);
 
         return http.build();
     }

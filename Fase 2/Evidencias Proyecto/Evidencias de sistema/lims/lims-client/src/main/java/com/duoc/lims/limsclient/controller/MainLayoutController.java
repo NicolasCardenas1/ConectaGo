@@ -7,6 +7,7 @@ import javafx.fxml.FXML;
 import javafx.scene.Node;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
+import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.StackPane;
 
 import java.util.List;
@@ -18,7 +19,9 @@ import java.util.List;
  */
 public class MainLayoutController {
 
+    @FXML private BorderPane raiz;
     @FXML private StackPane contenido;
+    @FXML private Label lblRolChip;
     @FXML private Button btnInicio;
     @FXML private Button btnSitios;
     @FXML private Button btnEquipos;
@@ -38,12 +41,29 @@ public class MainLayoutController {
         if (usuario != null) {
             lblUsuario.setText(usuario.getNombre() + " " + usuario.getApellido());
             lblRol.setText(usuario.getNombreRol());
+            aplicarColorDeRol(usuario.getNombreRol());
         }
 
         // Opciones según el rol
         mostrar(btnAprobaciones, Navigator.puedeAprobar());   // Supervisor y Administrador
         mostrar(btnUsuarios, Navigator.esAdministrador());    // solo Administrador
         mostrar(btnReportes, Navigator.puedeAprobar());       // Supervisor y Administrador
+    }
+
+    /**
+     * Color de la barra lateral según el rol de quien ingresó, para reconocerlo de un vistazo:
+     * Analista azul, Supervisor petróleo, Administrador violeta. No se usan rojo, amarillo ni verde porque
+     * en el sistema significan estados (ISO 3864 / IEC 60073), y el color siempre va con el nombre del rol
+     * escrito (ISO 9241-112: el color no es el único indicador).
+     */
+    private void aplicarColorDeRol(String rol) {
+        String clase = switch (rol == null ? "" : rol) {
+            case "Administrador" -> "rol-administrador";
+            case "Supervisor" -> "rol-supervisor";
+            default -> "rol-analista";
+        };
+        raiz.getStyleClass().add(clase);
+        lblRolChip.setText(rol == null ? "" : rol.toUpperCase());
     }
 
     /** Reemplaza la vista que se muestra a la derecha de la barra lateral. */

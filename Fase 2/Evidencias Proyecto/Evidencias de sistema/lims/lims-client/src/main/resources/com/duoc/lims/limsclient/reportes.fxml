@@ -16,6 +16,7 @@
     <HBox spacing="10" alignment="CENTER_LEFT">
         <Button fx:id="btnDescargar" text="Abrir / descargar PDF" styleClass="btn-primary" onAction="#onDescargar"/>
         <Button text="Actualizar" styleClass="btn-secondary" onAction="#onActualizar"/>
+        <Button text="Verificar informe" styleClass="btn-secondary" onAction="#onVerificar"/>
         <TextField fx:id="txtBuscar" promptText="Buscar por N° de informe, muestra o investigador..." styleClass="search-field"/>
         <Region HBox.hgrow="ALWAYS"/>
         <Label fx:id="lblMensaje" wrapText="true"/>

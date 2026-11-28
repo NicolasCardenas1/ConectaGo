@@ -45,8 +45,9 @@ import java.util.Map;
  * Etiqueta adhesiva de 50 × 25 mm para el envase de una muestra.
  *
  * A la vista muestra solo lo necesario para reconocer la muestra en el congelador o estante
- * (código, tipo, sitio, fecha de toma, almacenamiento y prioridad). El código QR guarda el detalle
- * completo en texto plano, legible con cualquier app de cámara del celular sin abrir el LIMS.
+ * (código, tipo, sitio, fecha de toma, almacenamiento y prioridad). El código QR guarda un enlace
+ * (v9): al escanearlo con la cámara del celular se abre una página del LIMS con el estado actual de la
+ * muestra. Si el backend no envía el enlace, el QR guarda el detalle en texto plano.
  *
  * La etiqueta se dibuja en puntos de impresora (1/72 de pulgada), que es la unidad que usa
  * JavaFX al imprimir: así sale a su tamaño real. En pantalla se muestra ampliada.
@@ -77,8 +78,14 @@ public final class EtiquetaMuestra {
 
     // ---------- contenido ----------
 
-    /** Texto que guarda el QR: el detalle completo de la muestra, una línea por dato. */
+    /**
+     * Lo que guarda el QR: el enlace a la página de la muestra (v9) o, si no hay enlace, el detalle
+     * de la muestra en texto, una línea por dato.
+     */
     public static String contenidoQr(Muestra m) {
+        if (m.getEnlaceQr() != null && !m.getEnlaceQr().isBlank()) {
+            return m.getEnlaceQr();
+        }
         List<String> lineas = new ArrayList<>();
         lineas.add("LIMS " + m.getCodigoUnico());
         agregar(lineas, "Tipo", m.getTipoMuestra());
@@ -159,7 +166,7 @@ public final class EtiquetaMuestra {
         ButtonType cancelar = new ButtonType(textoCancelar, ButtonBar.ButtonData.CANCEL_CLOSE);
 
         Label ayuda = new Label("Etiqueta de " + (int) ANCHO_MM + " × " + (int) ALTO_MM
-                + " mm. El código QR contiene el detalle completo de la muestra.");
+                + " mm. " + textoAyudaQr(m));
         ayuda.setWrapText(true);
         ayuda.setMaxWidth(ANCHO * ESCALA_VISTA_PREVIA + 24);
 
@@ -192,6 +199,21 @@ public final class EtiquetaMuestra {
             }
             error.showAndWait();
         }
+    }
+
+    private static String textoAyudaQr(Muestra m) {
+        String enlace = m.getEnlaceQr();
+        if (enlace == null || enlace.isBlank()) {
+            return "El código QR contiene el detalle completo de la muestra.";
+        }
+        String ayuda = "Al escanear el código QR con la cámara del celular se abre el estado actual de la muestra.";
+        if (enlace.contains("://localhost") || enlace.contains("://127.")) {
+            ayuda += " Atención: el enlace usa \"localhost\" y no abrirá desde el celular; configura lims.url-publica"
+                    + " en el backend.";
+        } else {
+            ayuda += " El celular debe estar en la misma red que este PC.";
+        }
+        return ayuda;
     }
 
     /** La etiqueta ampliada, con un borde gris que simula el contorno del adhesivo. */
@@ -270,7 +292,7 @@ public final class EtiquetaMuestra {
         try {
             matriz = new QRCodeWriter().encode(contenido, BarcodeFormat.QR_CODE, 0, 0, Map.of(
                     EncodeHintType.CHARACTER_SET, "UTF-8",
-                    EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L,
+                    EncodeHintType.ERROR_CORRECTION, contenido.length() <= 120 ? ErrorCorrectionLevel.M : ErrorCorrectionLevel.L,
                     EncodeHintType.MARGIN, 0));
         } catch (WriterException e) {
             throw new IllegalStateException("No se pudo generar el código QR", e);

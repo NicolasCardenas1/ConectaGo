@@ -36,6 +36,17 @@
             <artifactId>openpdf</artifactId>
             <version>1.3.43</version>
         </dependency>
+        <!-- v7: firma digital del informe PDF (certificado del laboratorio, CMS/PKCS#7 con SHA-256) -->
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcprov-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.bouncycastle</groupId>
+            <artifactId>bcpkix-jdk18on</artifactId>
+            <version>1.78.1</version>
+        </dependency>
         <!-- v5: borrador de interpretación del informe asistido por IA (Claude, SDK oficial de Anthropic) -->
         <dependency>
             <groupId>com.anthropic</groupId>

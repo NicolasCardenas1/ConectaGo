@@ -11,6 +11,7 @@
   .popup b { color: #1e293b; }
   .popup .sub { color: #64748b; font-size: 11px; }
   .popup .alerta { color: #b91c1c; font-weight: bold; }
+  .popup .aviso { color: #b45309; font-weight: bold; }
   #sin-conexion { display: none; position: absolute; inset: 0; align-items: center; justify-content: center;
                   color: #475569; text-align: center; padding: 30px; font-size: 14px; }
   .leyenda { background: white; padding: 6px 10px; border-radius: 6px; font-size: 11px; color: #334155;
@@ -29,7 +30,7 @@
   function colorSitio(s) {
     if (!s.activo) return '#94a3b8';
     if (s.resultadosAnomalos > 0) return '#b91c1c';
-    if (s.resultadosFueraRango > 0) return '#d97706';
+    if (s.resultadosFueraRango > 0) return '#b45309';
     return '#1e4f80';
   }
 
@@ -49,7 +50,7 @@
     leyenda.onAdd = function () {
       var d = L.DomUtil.create('div', 'leyenda');
       d.innerHTML = '<span style="background:#1e4f80"></span>Sin alertas<br>'
-        + '<span style="background:#d97706"></span>Con resultados fuera de rango<br>'
+        + '<span style="background:#b45309"></span>Con resultados fuera de rango<br>'
         + '<span style="background:#b91c1c"></span>Con valores atípicos<br>'
         + '<span style="background:#94a3b8"></span>Inactivo';
       return d;
@@ -69,7 +70,7 @@
       }).addTo(mapa);
       var alertas = '';
       if (s.resultadosAnomalos > 0) alertas += '<div class="alerta">⚠ ' + s.resultadosAnomalos + ' valor(es) atípico(s)</div>';
-      if (s.resultadosFueraRango > 0) alertas += '<div class="alerta">' + s.resultadosFueraRango + ' resultado(s) fuera de rango</div>';
+      if (s.resultadosFueraRango > 0) alertas += '<div class="aviso">' + s.resultadosFueraRango + ' resultado(s) fuera de rango</div>';
       m.bindPopup('<div class="popup"><b>' + s.codigo + ' · ' + s.nombre + '</b><br>'
         + '<span class="sub">' + s.tipo + (s.comuna ? ' · ' + s.comuna : '') + '</span><br>'
         + '<span class="sub">' + s.lat.toFixed(4) + ', ' + s.lon.toFixed(4) + '</span><br>'

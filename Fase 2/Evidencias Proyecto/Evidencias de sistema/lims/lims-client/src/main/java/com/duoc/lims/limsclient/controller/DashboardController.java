@@ -188,6 +188,8 @@ public class DashboardController {
             serie.getData().add(new XYChart.Data<>(estados.get(i).getValue(), Badges.textoVisible(estados.get(i).getKey())));
         }
         graficoEstados.getData().setAll(serie);
+        ejeEnteros((NumberAxis) graficoEstados.getXAxis(),
+                estados.stream().mapToLong(Map.Entry::getValue).max().orElse(0));
         for (XYChart.Data<Number, String> dato : serie.getData()) {
             Tooltip.install(dato.getNode(), tooltip(dato.getYValue() + ": " + dato.getXValue() + " muestra(s)"));
         }
@@ -223,10 +225,13 @@ public class DashboardController {
         for (int i = 0; i < puntos.size(); i++) {
             Punto p = puntos.get(i);
             Node nodo = valores.getData().get(i).getNode();
-            String color = p.anomalo() ? "#b91c1c" : !p.dentroRango() ? "#d97706" : "#1e4f80";
-            String forma = p.anomalo() ? "-fx-shape: \"M5,0 L10,5 L5,10 L0,5 Z\"; -fx-padding: 7px;" : "-fx-padding: 4.5px;";
-            nodo.setStyle("-fx-background-color: white, " + color + "; -fx-background-insets: 0, 2;"
-                    + "-fx-background-radius: 6px;" + forma);
+            // el color no es el único código (ISO 9241-112): cada caso tiene además su forma
+            // atípico = rombo rojo · fuera de rango = cuadrado ámbar · normal = círculo azul
+            String color = p.anomalo() ? "#b91c1c" : !p.dentroRango() ? "#b45309" : "#1e4f80";
+            String forma = p.anomalo() ? "-fx-shape: \"M5,0 L10,5 L5,10 L0,5 Z\"; -fx-padding: 7px;"
+                    : !p.dentroRango() ? "-fx-background-radius: 0; -fx-padding: 5px;"
+                    : "-fx-background-radius: 6px; -fx-padding: 4.5px;";
+            nodo.setStyle("-fx-background-color: white, " + color + "; -fx-background-insets: 0, 2;" + forma);
             nodo.setOnMouseClicked(ev -> Navigator.irADetalleMuestra(p.idMuestra()));
             nodo.setCursor(javafx.scene.Cursor.HAND);
             Tooltip.install(nodo, tooltip(p.codigoMuestra() + " · " + p.sitio() + "\n"
@@ -250,7 +255,7 @@ public class DashboardController {
     }
 
     private void estiloReferencia(XYChart.Series<Number, Number> s) {
-        s.getNode().setStyle("-fx-stroke: #94a3b8; -fx-stroke-width: 1.5px; -fx-stroke-dash-array: 6 5;");
+        s.getNode().setStyle("-fx-stroke: #78869c; -fx-stroke-width: 1.5px; -fx-stroke-dash-array: 6 5;");
         for (XYChart.Data<Number, Number> d : s.getData()) {
             d.getNode().setVisible(false);
         }
@@ -263,6 +268,43 @@ public class DashboardController {
         if (alerta) {
             kpi.getStyleClass().add("kpi-valor-alerta");
         }
+    }
+
+    /**
+     * Eje de conteos: solo números enteros, con un paso "redondo" (1, 2, 5, 10, 20, 50…) para que
+     * haya como máximo unas 8 marcas, y el máximo ajustado a ese paso.
+     */
+    private static void ejeEnteros(NumberAxis eje, long maximo) {
+        long paso = 1;
+        while (maximo / paso > 8) {
+            long siguiente = paso * 2;
+            if (maximo / siguiente <= 8) {
+                paso = siguiente;
+                break;
+            }
+            siguiente = paso * 5;
+            if (maximo / siguiente <= 8) {
+                paso = siguiente;
+                break;
+            }
+            paso *= 10;
+        }
+        eje.setAutoRanging(false);
+        eje.setLowerBound(0);
+        eje.setUpperBound(Math.max(paso, (maximo + paso - 1) / paso * paso));
+        eje.setTickUnit(paso);
+        eje.setMinorTickCount(0);
+        eje.setTickLabelFormatter(new StringConverter<>() {
+            @Override
+            public String toString(Number n) {
+                return String.valueOf(Math.round(n.doubleValue()));
+            }
+
+            @Override
+            public Number fromString(String s) {
+                return Long.parseLong(s);
+            }
+        });
     }
 
     private Tooltip tooltip(String texto) {

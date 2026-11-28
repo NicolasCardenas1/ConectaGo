@@ -545,6 +545,30 @@ public class ApiClient {
         return response.body();
     }
 
+    /** v7: verifica un informe por el código impreso en su recuadro de firma. */
+    public com.duoc.lims.limsclient.model.VerificacionInforme verificarInformePorCodigo(String codigo)
+            throws IOException, InterruptedException {
+        String ruta = "/reportes/verificar/"
+                + java.net.URLEncoder.encode(codigo.trim(), java.nio.charset.StandardCharsets.UTF_8).replace("+", "%20");
+        return objectMapper.readValue(enviarJson("GET", ruta, null, 200),
+                com.duoc.lims.limsclient.model.VerificacionInforme.class);
+    }
+
+    /** v7: verifica que un archivo PDF sea idéntico al informe firmado que emitió el laboratorio. */
+    public com.duoc.lims.limsclient.model.VerificacionInforme verificarInformePorArchivo(byte[] pdf)
+            throws IOException, InterruptedException {
+        HttpRequest request = nuevaPeticion()
+                .uri(URI.create(BASE_URL + "/reportes/verificar-archivo"))
+                .header("Content-Type", "application/pdf")
+                .POST(HttpRequest.BodyPublishers.ofByteArray(pdf))
+                .build();
+        HttpResponse<String> response = enviar(request, HttpResponse.BodyHandlers.ofString());
+        if (response.statusCode() != 200) {
+            throw new IOException(response.body());
+        }
+        return objectMapper.readValue(response.body(), com.duoc.lims.limsclient.model.VerificacionInforme.class);
+    }
+
     // =====================================================================
     // v6 — Historial de calibraciones y chatbot de trazabilidad
     // =====================================================================

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
 
@@ -7,11 +8,15 @@
      Navigator cambia solo lo que va dentro de "contenido". -->
 <BorderPane xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
             fx:controller="com.duoc.lims.limsclient.controller.MainLayoutController"
-            styleClass="app-root">
+            fx:id="raiz" styleClass="app-root">
 
     <left>
         <VBox styleClass="sidebar" prefWidth="210" minWidth="210">
             <Label text="LIMS · Laboratorio" styleClass="sidebar-title"/>
+            <!-- color del rol de quien ingresó (ver styles.css, "Color según el rol") -->
+            <Label fx:id="lblRolChip" styleClass="rol-chip">
+                <VBox.margin><Insets top="-10" left="20" bottom="14"/></VBox.margin>
+            </Label>
 
             <Button fx:id="btnInicio" text="Inicio" styleClass="sidebar-item"
                     maxWidth="Infinity" onAction="#onInicio"/>

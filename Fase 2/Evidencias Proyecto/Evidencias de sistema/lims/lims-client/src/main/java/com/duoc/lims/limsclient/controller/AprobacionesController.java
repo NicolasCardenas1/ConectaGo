@@ -240,7 +240,7 @@ public class AprobacionesController {
     }
 
     private void mostrarOk(String mensaje) {
-        lblMensaje.setStyle("-fx-text-fill: #16a34a;");
+        lblMensaje.setStyle("-fx-text-fill: #15803d;");
         lblMensaje.setText(mensaje);
     }
 }

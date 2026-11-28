@@ -42,4 +42,6 @@ public class MuestraResponseDTO {
     // v6 — equipo con que se tomó la muestra en terreno
     private String equipoTomaCodigo;
     private String equipoTomaNombre;
+    // v9 — enlace del código QR de la etiqueta (página de solo lectura en el celular)
+    private String enlaceQr;
 }

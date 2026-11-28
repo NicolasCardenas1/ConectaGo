@@ -106,8 +106,8 @@ public class InterpretacionService {
 
         String porReglas = borradorPorReglas(muestra, filas);
         if (cliente == null) {
-            return new InterpretacionDTO(porReglas, "Reglas automáticas",
-                    "IA no configurada (falta ANTHROPIC_API_KEY): se generó un borrador por reglas.");
+            // Sin clave de IA, el borrador por reglas es el modo normal: no se muestra aviso al usuario.
+            return new InterpretacionDTO(porReglas, "Reglas automáticas", null);
         }
         try {
             Optional<String> texto = consultarClaude(datosParaIA(muestra, filas));

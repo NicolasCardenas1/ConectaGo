@@ -20,13 +20,18 @@ Demo de 12 minutos pensada para responder, en vivo, cada punto de la retroalimen
 1. Docker Desktop abierto. En `lims-backend`:
    ```powershell
    docker-compose up -d
-   Get-Content db-migrations\v5-trazabilidad-sitios-ia.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db   # solo si la BD es anterior a v5
-   Get-Content db-migrations\datos-demo-v5.sql | docker exec -i lims-mysql mysql -u lims_user -plims_pass lims_db
+   docker cp db-migrations\datos-demo-v5.sql lims-mysql:/tmp/m.sql
+   docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
+   docker cp db-migrations\datos-demo-v6.sql lims-mysql:/tmp/m.sql
+   docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user -plims_pass lims_db < /tmp/m.sql"
    ```
-   > Lo más limpio es partir de una BD nueva (`docker-compose down -v` + `up -d`) y cargar solo `datos-demo-v5.sql`.
-2. (Opcional) Configurar `ANTHROPIC_API_KEY` en la configuración de IntelliJ del backend, para que el borrador de interpretación lo escriba Claude. Sin ella, la demo funciona igual con el borrador por reglas.
-3. Levantar backend y cliente. Verificar **internet** (el mapa usa OpenStreetMap).
-4. Tener abiertas **dos sesiones**: una como `analista.demo` / `analista123` y otra como `supervisor.demo` / `super123`. Se puede hacer con dos clientes, o cerrando sesión entre pasos.
+   > Si la BD es anterior a v6, apliquen antes las migraciones que le falten (ver `CAMBIO-DE-RUTA.md`, sección 4). Usen siempre `docker cp`: `Get-Content ... | docker exec -i` estropea las tildes.
+   >
+   > Lo más limpio es partir de una BD nueva (`docker-compose down -v` + `up -d`), pero **`-v` borra todos los datos locales**: respalden antes si tienen algo propio.
+2. **Calibración de la sonda EQ-003.** Las fechas de calibración de los equipos se calculan desde el día en que se creó la base, así que con el tiempo la sonda queda vencida y el paso 4 no se puede hacer. Como **admin**, en *Equipos y calibración* → EQ-003 → **Registrar calibración** con fecha de hoy y vencimiento en 6 meses. De paso, en *Historial de calibraciones* se ve que la calibración anterior **no se borró**. Revisen también que EQ-005 siga *Vencida*.
+3. (Opcional) Configurar `ANTHROPIC_API_KEY` en la configuración de IntelliJ del backend, para que el borrador de interpretación lo escriba Claude. Sin ella, la demo funciona igual con el borrador por reglas.
+4. Levantar backend y cliente. Verificar **internet** (el mapa usa OpenStreetMap).
+5. Tener abiertas **dos sesiones**: una como `analista.demo` / `analista123` y otra como `supervisor.demo` / `super123`. Se puede hacer con dos clientes, o cerrando sesión entre pasos.
 
 ---
 
@@ -56,7 +61,7 @@ Demo de 12 minutos pensada para responder, en vivo, cada punto de la retroalimen
 1. *Ingresar resultado* en Salinidad → escribir **27**.
    - "✓ Dentro del rango normal" (20–34 PSU)…
    - …pero **"⚠ Valor atípico: puntaje −8,7"**: en Bahía Ilque la salinidad ronda 31,5. **Esto es lo que un Excel con validación de rango no ve.**
-2. Elegir el equipo **EQ-005 (calibración vencida)** → el sistema **no deja usarlo**. Elegir **EQ-003** y guardar.
+2. Elegir el equipo **EQ-005 (calibración vencida)** → el sistema **no deja usarlo**. Elegir **EQ-003** (calibrada la noche anterior, punto 2) y guardar.
 3. Explicar la IA en una frase: *"compara cada valor con el historial del mismo parámetro en el mismo sitio, usando mediana y MAD, que no se dejan engañar por los propios atípicos; no bloquea, avisa y lo destaca al supervisor."*
 
 ## Paso 5 — Rechazo, corrección y versiones (2 min) · **supervisor** y **analista**
@@ -77,6 +82,8 @@ Demo de 12 minutos pensada para responder, en vivo, cada punto de la retroalimen
 
 - *Interpretación (IA)* → *Generar borrador con IA*: Claude (o las reglas, si no hay API key) redacta una interpretación a partir de los resultados, rangos y atípicos. **El supervisor la revisa y la edita**; el sistema registra que la validó él.
 - *Generar informe PDF*: sitio con coordenadas, **equipo y calibración** por resultado, versión `(v2)`, **historial de correcciones**, **interpretación** con la nota "generado con IA, revisado y validado por…", cadena de custodia.
+- **Firma digital**: al final del informe, el recuadro *Firmado electrónicamente* con el **código de verificación**. En Adobe Reader, el panel de firmas muestra que el documento está firmado y no fue modificado (el certificado es de demostración, por eso Adobe avisa que la identidad no está verificada).
+- *Reportes → Verificar informe*: escribir el código → "Código válido". Elegir el PDF → "Archivo auténtico". **Mensaje clave:** si alguien cambia un valor en el PDF, el sistema lo detecta; en un Excel o un Word, no.
 
 ## Paso 8 — Cierre (30 s)
 
