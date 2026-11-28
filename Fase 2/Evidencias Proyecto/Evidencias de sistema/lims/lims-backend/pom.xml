@@ -109,6 +109,19 @@
     </dependencies>
 
     <build>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+            </resource>
+            <!-- Las migraciones de db-migrations van dentro del jar: ActualizacionBaseDatos las aplica al arrancar -->
+            <resource>
+                <directory>db-migrations</directory>
+                <targetPath>db/migraciones</targetPath>
+                <includes>
+                    <include>v*.sql</include>
+                </includes>
+            </resource>
+        </resources>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>

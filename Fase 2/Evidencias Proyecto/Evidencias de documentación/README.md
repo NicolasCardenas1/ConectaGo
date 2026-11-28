@@ -520,6 +520,15 @@ Solo **Administrador**:
 | Verificar un informe firmado (código o archivo PDF) | ❌ | ✅ | ✅ |
 | Administrar usuarios y contraseñas | ❌ | ❌ | ✅ |
 
+## Actualización automática de la base de datos
+
+**Desde ahora no hay que ejecutar las migraciones a mano.** Cuando el backend arranca (`ActualizacionBaseDatos`), revisa en qué versión está la base, ya sea la local en Docker o Aiven, y aplica en orden las migraciones que falten, de la v4 a la v8. En el log aparece una de estas líneas:
+
+- `Base de datos: aplicando migración v7 (...)`
+- `Base de datos al día (v8).`
+
+Basta con actualizar el código (`git pull`), recompilar y arrancar el backend. Si una migración falla, el backend no arranca y el mensaje indica cuál fue. Las secciones siguientes quedan como referencia de qué cambia cada versión y para aplicarlas a mano si hiciera falta.
+
 ## Migración a la versión 4 (dominio ambiental)
 
 Una **BD nueva** (`docker-compose down -v` + `up -d`) ya trae todo. Para una **BD existente** (Aiven, o un Docker que no quieran borrar) ejecuten **una vez** `lims-backend/db-migrations/v4-dominio-ambiental.sql`:
