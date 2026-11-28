@@ -74,8 +74,9 @@ public class ReportePdfService {
     private static final Color TEXTO = new Color(0x1E, 0x29, 0x3B);
     private static final Color VERDE_FONDO = new Color(0xDC, 0xFC, 0xE7);
     private static final Color VERDE_TEXTO = new Color(0x16, 0x65, 0x34);
-    private static final Color ROJO_FONDO = new Color(0xFE, 0xE2, 0xE2);
-    private static final Color ROJO_TEXTO = new Color(0x99, 0x1B, 0x1B);
+    // "Fuera de rango" es una condición anormal, no una falla: ámbar (IEC 60073 / ISO 3864), igual que en el LIMS
+    private static final Color AMBAR_FONDO = new Color(0xFE, 0xF3, 0xC7);
+    private static final Color AMBAR_TEXTO = new Color(0x92, 0x40, 0x0E);
 
     private static final Font F_TITULO_LAB = new Font(Font.HELVETICA, 15, Font.BOLD, AZUL);
     private static final Font F_NORMAL = new Font(Font.HELVETICA, 9, Font.NORMAL, TEXTO);
@@ -630,9 +631,9 @@ public class ReportePdfService {
     }
 
     private PdfPCell celdaControl(boolean dentroRango) {
-        Font f = new Font(Font.HELVETICA, 8, Font.BOLD, dentroRango ? VERDE_TEXTO : ROJO_TEXTO);
+        Font f = new Font(Font.HELVETICA, 8, Font.BOLD, dentroRango ? VERDE_TEXTO : AMBAR_TEXTO);
         PdfPCell c = new PdfPCell(new Phrase(dentroRango ? "En rango" : "Fuera de rango", f));
-        c.setBackgroundColor(dentroRango ? VERDE_FONDO : ROJO_FONDO);
+        c.setBackgroundColor(dentroRango ? VERDE_FONDO : AMBAR_FONDO);
         c.setBorderColor(GRIS_BORDE);
         c.setPadding(5);
         c.setHorizontalAlignment(Element.ALIGN_CENTER);

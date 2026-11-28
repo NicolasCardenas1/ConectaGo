@@ -584,6 +584,30 @@ docker exec lims-mysql sh -c "mysql --default-character-set=utf8mb4 -ulims_user 
 
 Desactiva *Hemograma Completo* (análisis clínico; no se borra para no romper la historia de muestras antiguas, solo deja de aparecer en *Agregar análisis*) y agrega 10 análisis ambientales: nitrato, fosfato, amonio, silicato, turbidez, conductividad eléctrica, sólidos suspendidos totales, coliformes fecales, materia orgánica en sedimento y biomasa de macroalgas. Sus rangos normales son **referenciales**: se ajustan en *Parámetros y rangos*. También agrega 6 equipos de laboratorio con su calibración: turbidímetro (EQ-010), conductímetro (EQ-011), estufa de secado (EQ-012), balanza de precisión (EQ-013), mufla (EQ-014) e incubadora para coliformes (EQ-015). Nitrato, fosfato, amonio y silicato se miden con el espectrofotómetro EQ-004.
 
+## Versión 9: QR con enlace, colores según ISO y color por rol (sin migración de BD)
+
+La v9 **no cambia la base de datos**. Basta con actualizar el código y volver a compilar el backend y el cliente.
+
+**Código QR de la etiqueta.** El QR ya no guarda solo texto: ahora tiene un enlace a una página de solo lectura (`/m/{código}?k=firma`) que muestra el estado **actual** de la muestra, sus análisis (los valores aparecen solo cuando están aprobados) y el informe emitido. La firma (HMAC-SHA256) impide ver otras muestras adivinando su código. La clave se crea sola en `lims-backend/firma/secreto-qr.txt`, que no se sube a git.
+
+- **Celular en la misma red que el PC:** funciona sin hacer nada más. El enlace usa la IP local del PC. Puede ser necesario permitir el puerto 8080 en el firewall de Windows. En las redes institucionales (Wi-Fi de Duoc) los equipos no se ven entre sí, así que este caso no funciona.
+- **Cualquier celular, en cualquier red (por ejemplo, la comisión):** instalen el túnel una vez con `winget install --id Cloudflare.cloudflared -e`. Luego, **con el backend iniciado**, ejecuten en otra ventana:
+
+  ```powershell
+  cd lims-backend
+  powershell -ExecutionPolicy Bypass -File .\iniciar-tunel-qr.ps1
+  ```
+
+  El script crea una dirección `https://xxxx.trycloudflare.com` y el backend la toma en menos de 30 segundos. Desde internet **solo** se abre la página del QR: el login y la API responden 404 (`AccesoExternoFilter`). La dirección cambia cada vez que se inicia el túnel, así que hay que generar o imprimir las etiquetas **después** de iniciarlo. La ventana del túnel debe quedar abierta.
+
+**Colores según ISO.**
+
+- Los colores de estado siguen ISO 3864 / IEC 60073: verde = normal o aprobado, ámbar = condición anormal (fuera de rango, por vencer), rojo = falla o acción obligatoria (rechazado, atípico, calibración vencida), azul = en curso, gris = neutro (Recibida, Pendiente), morado = cerrado (Reportada). Son iguales en el LIMS, el gráfico, el mapa, el informe PDF y la página del QR.
+- El color nunca es el único indicador (ISO 9241-112): las etiquetas llevan texto y, en el gráfico, el fuera de rango es un cuadrado y el atípico un rombo.
+- Todos los textos tienen un contraste de 4,5:1 o más (ISO/IEC 40500).
+
+**Color según el rol.** La barra lateral muestra una franja y una etiqueta con el color del rol de quien ingresó: Analista azul, Supervisor petróleo, Administrador violeta. Para los roles no se usan rojo, amarillo ni verde porque esos colores ya significan estados, y el nombre del rol siempre aparece escrito junto al color.
+
 ### Configurar la IA (opcional)
 
 El borrador de interpretación y el asistente de trazabilidad (v6) usan Claude solo si el backend arranca con la variable de entorno `ANTHROPIC_API_KEY` (en IntelliJ: *Edit Configurations → Environment variables*; **nunca** en `application.properties` ni en git). Sin ella todo funciona igual con el borrador por reglas, y el log del backend lo indica al arrancar (`IA: sin ANTHROPIC_API_KEY…`).

@@ -85,12 +85,16 @@ public class Muestra {
     private LocalDateTime fechaInterpretacion;
     private String equipoTomaCodigo;   // v6
     private String equipoTomaNombre;   // v6
+    private String enlaceQr;           // v9: enlace del QR de la etiqueta
 
     public String getEquipoTomaCodigo() { return equipoTomaCodigo; }
     public void setEquipoTomaCodigo(String equipoTomaCodigo) { this.equipoTomaCodigo = equipoTomaCodigo; }
 
     public String getEquipoTomaNombre() { return equipoTomaNombre; }
     public void setEquipoTomaNombre(String equipoTomaNombre) { this.equipoTomaNombre = equipoTomaNombre; }
+
+    public String getEnlaceQr() { return enlaceQr; }
+    public void setEnlaceQr(String enlaceQr) { this.enlaceQr = enlaceQr; }
 
     public Integer getIdSitio() { return idSitio; }
     public void setIdSitio(Integer idSitio) { this.idSitio = idSitio; }

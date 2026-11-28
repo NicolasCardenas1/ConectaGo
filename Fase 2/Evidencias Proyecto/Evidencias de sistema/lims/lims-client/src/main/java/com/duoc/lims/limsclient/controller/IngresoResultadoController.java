@@ -225,7 +225,7 @@ public class IngresoResultadoController {
             lblAvisoRango.setText("⚠ Valor fuera del rango normal. Debes justificarlo en observaciones.");
             lblObservacionesTitulo.setText("Observaciones (obligatorio) *");
         } else {
-            lblAvisoRango.setStyle("-fx-text-fill: #16a34a;");
+            lblAvisoRango.setStyle("-fx-text-fill: #15803d;");
             lblAvisoRango.setText("✓ Dentro del rango normal");
             lblObservacionesTitulo.setText("Observaciones");
         }

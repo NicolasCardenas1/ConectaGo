@@ -225,10 +225,13 @@ public class DashboardController {
         for (int i = 0; i < puntos.size(); i++) {
             Punto p = puntos.get(i);
             Node nodo = valores.getData().get(i).getNode();
-            String color = p.anomalo() ? "#b91c1c" : !p.dentroRango() ? "#d97706" : "#1e4f80";
-            String forma = p.anomalo() ? "-fx-shape: \"M5,0 L10,5 L5,10 L0,5 Z\"; -fx-padding: 7px;" : "-fx-padding: 4.5px;";
-            nodo.setStyle("-fx-background-color: white, " + color + "; -fx-background-insets: 0, 2;"
-                    + "-fx-background-radius: 6px;" + forma);
+            // el color no es el único código (ISO 9241-112): cada caso tiene además su forma
+            // atípico = rombo rojo · fuera de rango = cuadrado ámbar · normal = círculo azul
+            String color = p.anomalo() ? "#b91c1c" : !p.dentroRango() ? "#b45309" : "#1e4f80";
+            String forma = p.anomalo() ? "-fx-shape: \"M5,0 L10,5 L5,10 L0,5 Z\"; -fx-padding: 7px;"
+                    : !p.dentroRango() ? "-fx-background-radius: 0; -fx-padding: 5px;"
+                    : "-fx-background-radius: 6px; -fx-padding: 4.5px;";
+            nodo.setStyle("-fx-background-color: white, " + color + "; -fx-background-insets: 0, 2;" + forma);
             nodo.setOnMouseClicked(ev -> Navigator.irADetalleMuestra(p.idMuestra()));
             nodo.setCursor(javafx.scene.Cursor.HAND);
             Tooltip.install(nodo, tooltip(p.codigoMuestra() + " · " + p.sitio() + "\n"
@@ -252,7 +255,7 @@ public class DashboardController {
     }
 
     private void estiloReferencia(XYChart.Series<Number, Number> s) {
-        s.getNode().setStyle("-fx-stroke: #94a3b8; -fx-stroke-width: 1.5px; -fx-stroke-dash-array: 6 5;");
+        s.getNode().setStyle("-fx-stroke: #78869c; -fx-stroke-width: 1.5px; -fx-stroke-dash-array: 6 5;");
         for (XYChart.Data<Number, Number> d : s.getData()) {
             d.getNode().setVisible(false);
         }

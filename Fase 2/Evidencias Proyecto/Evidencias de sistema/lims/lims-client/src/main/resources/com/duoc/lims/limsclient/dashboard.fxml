@@ -98,7 +98,7 @@
         </LineChart>
         <FlowPane hgap="18" vgap="4" alignment="CENTER_LEFT">
             <Label text="●  Valor medido" styleClass="leyenda-medido"/>
-            <Label text="●  Fuera del rango normal" styleClass="leyenda-fuera"/>
+            <Label text="■  Fuera del rango normal" styleClass="leyenda-fuera"/>
             <Label text="◆  Valor atípico para el sitio" styleClass="leyenda-atipico"/>
             <Label text="- - -  Límites del rango normal" styleClass="leyenda-rango"/>
             <Label fx:id="lblResumenTendencia" styleClass="hint"/>

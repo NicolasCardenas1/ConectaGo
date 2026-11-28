@@ -245,7 +245,7 @@ public class SitiosController {
     }
 
     private void mostrarOk(String m) {
-        lblMensaje.setStyle("-fx-text-fill: #16a34a;");
+        lblMensaje.setStyle("-fx-text-fill: #15803d;");
         lblMensaje.setText(m);
     }
 }
